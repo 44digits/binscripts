@@ -146,6 +146,26 @@ function chrome_linkedin () {
 
 
 
+function qube_shutdown () {
+    declare _dispvm
+    declare _displist=$(qvm-ls --raw-data --running --fields name \
+        | grep disp \
+        | cut -f 1 -d '|'
+        )
+
+    while read -r _dispvm <&3; do
+        notify 2 "qube_shutdown: --$_dispvm--"
+        qvm-kill $_dispvm
+    done 3<<< "$_displist"
+
+    while [[ "$(qube_num_running)" -gt "0" ]]; do
+        qvm-shutdown --all
+        sleep 15
+    done
+}
+
+
+
 function launcher_main () {
     declare _app_selected=$(zenity_fix \
         --height=$__DIALOGHEIGHT \
@@ -292,10 +312,7 @@ function launcher_main () {
                     'xterm -e ping google.com'
                 ;;
             shutdown)
-                while [[ "$(qube_num_running)" -gt "0" ]]; do
-                    qvm-shutdown --all
-                    sleep 15
-                done
+                qube_shutdown
                 ;;
             startup)
                 wait_disk_ready
