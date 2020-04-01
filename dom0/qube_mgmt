@@ -9,12 +9,13 @@
 #
 
 
-_MASTERTEMPLATE=debian-9
-_SYSTEMTEMPLATE=fedora-28-30
-_CONFIGDIR=/home/ross/bin/config/
+declare _MASTERTEMPLATE=debian-9
+declare _SYSTEMTEMPLATE=fedora-28-30
+declare _CONFIGDIR="$(dirname $0)/config/"
+declare _DOTDIR="$(dirname $0)../dotfiles/"
 
-__notifylevel="${__notifylevel:-2}"
-__qvm_run_options="${__qvm_run_options:-"-p --color-stderr=37"}"
+declare __notifylevel="${__notifylevel:-2}"
+declare __qvm_run_options="${__qvm_run_options:-"-p --color-stderr=37"}"
 
 source $(dirname "$0")/qubes_functions
 
@@ -53,20 +54,29 @@ function config_user () {
     notify 2 "--config_user _appvm:$_appvm"
 
     _commands=$(cat <<EOF
-        dconf write /org/gtk/settings/file-chooser/sort-directories-first true"
-        dconf write /org/gnome/nautilus/preferences/default-folder-viewer "'list-view'"
-        dconf write /org/gnome/nautilus/list-view/use-tree-view true
         dconf write /org/gnome/nautilus/list-view/defualt-zoom-level "'small'"
-        dconf write /org/gtk/settings/file-chooser/sort-directories-first true
+        dconf write /org/gnome/nautilus/list-view/use-tree-view true
+        dconf write /org/gnome/nautilus/preferences/default-folder-viewer "'list-view'"
         dconf write /org/gtk/settings/file-chooser/expand-folders true
+        dconf write /org/gtk/settings/file-chooser/sort-directories-first true
+        dconf write /org/gtk/settings/file-chooser/sort-directories-first true"
 EOF
     )
 
     qube_run_commands $_appvm "user" $_commands
+
+    declare _lines=$(cat $_DOTDIR/_bashrc)
     qube_append_file $_appvm "user" \
         "/home/user/.bashrc" \
-        "alias rm='rm -i'"
-    qube_copy_file $_appvm "user" "$_CONFIGDIR/_vimrc" "/home/user/.vimrc"
+        $_lines
+    qube_copy_file $_appvm \
+        "user" \
+        "$_DOTDIR/_vimrc" \
+        "/home/user/.vimrc"
+    qube_copy_file $_appvm \
+        "user" \
+        "$_DOTDIR/_screenrc" \
+        "/home/user/.screenrc"
 }
 
 
@@ -77,9 +87,13 @@ function config_firefox () {
     notify 2 "--config_firefox  _appvm:$_appvm"
 
     _commands=$(cat <<EOF
-        firefox https://addons.mozilla.org/en-US/firefox/addon/noscript/ https://addons.mozilla.org/en-US/firefox/addon/adblock-plus/ https://addons.mozilla.org/en-US/firefox/addon/disabled-add-on-fix-57-60/
+        firefox 
+            https://addons.mozilla.org/en-US/firefox/addon/noscript/ 
+            https://addons.mozilla.org/en-US/firefox/addon/adblock-plus/ 
+            https://addons.mozilla.org/en-US/firefox/addon/disabled-add-on-fix-57-60/
 EOF
     )
+    _commands=$(echo $_commands | tr '[:space:]' ' ')
     qube_run_commands $_appvm "user" $_commands
 }
 
@@ -110,7 +124,6 @@ EOF
 
 function create_vpn () {
     declare _vpnvm=sys-vpn-ro
-    #declare _systemplate=fedora-30
     declare _apptemplate=debian-9-plus
     declare _vpnappdvm=vpn-dvm
 
@@ -125,7 +138,12 @@ function create_vpn () {
         --prop=vcpus=2 \
         --prop=provides_network=True \
         $_vpnvm
-    qube_copy_file $_vpnvm "user" \
+    qube_copy_file $_vpnvm \
+        "user" \
+        "$_CONFIGDIR/vpn.ovpn" \
+        "/tmp/vpn.ovpn"
+    qube_copy_file $_vpnvm \
+        "user" \
         "$_CONFIGDIR/configure_vpn" \
         "/tmp/configure_vpn"
     qvm-run $__qvm_run_options \
@@ -139,7 +157,7 @@ function create_vpn () {
     qvm-create --class AppVM \
         --template $_apptemplate \
         --label red \
-        --prop=maxmem=8192 \
+        --prop=maxmem=2048 \
         --prop=memory=1024 \
         --prop=netvm=$_vpnvm \
         $_vpnappdvm
@@ -147,7 +165,8 @@ function create_vpn () {
     qvm-features $_vpnappdvm appmenus-dispvm 1
     qvm-start $_vpnappdvm
 
-    qube_copy_file $_vpnappdvm "user" \ 
+    qube_copy_file $_vpnappdvm \
+        "user" \ 
         "$_CONFIGDIR/configure_vpn_client" \
         "/tmp/configure_vpn_client"
 
@@ -163,7 +182,7 @@ function create_vpn () {
 function create_template () {
     declare _template=$1
     declare _software=$2
-    if [ "$DEBUG" ]; then echo "--create_template : _template:$_template, _software:$_software"; fi
+    notify 1 "--create_template : _template:$_template, _software:$_software"
 
     qvm-clone $_MASTERTEMPLATE $_template
     qube_update_vm $_template
@@ -177,14 +196,13 @@ function create_min_appvms () {
     declare _template=$1
     declare _appvm
 
-
     _appvm=fin
     notify 2 "--create_min_appvms _template:$_template, _appvm:$_appvm"
     
     qvm-create --class AppVM \
         --template $_template \
         --label purple \
-        --prop=maxmem=2048 \
+        --prop=maxmem=1024 \
         --prop=memory=512 \
         --prop=netvm="" \
         $_appvm
@@ -198,7 +216,7 @@ function create_min_appvms () {
     qvm-create --class AppVM \
         --template $_template \
         --label purple \
-        --prop=maxmem=2048 \
+        --prop=maxmem=1024 \
         --prop=memory=512 \
         --prop=netvm="" \
         $_appvm
@@ -210,8 +228,9 @@ function create_min_appvms () {
 
 function create_dev_appvms() {
     declare _template=$1
-    declare _appvm=dev
+    declare _appvm
 
+    _appvm=dev
     notify 2 "--create_dev_appvms _template:$_template, _appvm:$_appvm"
 
     qvm-create --class AppVM \
@@ -225,14 +244,29 @@ function create_dev_appvms() {
     qvm-start $_appvm
     config_user $_appvm
     qvm-shutdown $_appvm 
+
+    _appvm=learn
+    notify 2 "--create_dev_appvms _template:$_template, _appvm:$_appvm"
+
+    qvm-create --class AppVM \
+        --template $_template \
+        --label yellow \
+        --prop=maxmem=8192 \
+        --prop=memory=1024 \
+        $_appvm
+
+    qvm-start $_appvm
+    config_user $_appvm
+    qvm-shutdown $_appvm 
 }
 
 
 function create_media_appvms() {
     declare _template=$1
-    declare _appvm=media-dvm
+    declare _appvm
 
     # create media dvm
+    _appvm=media-dvm
     notify 2 "--create_media__appvms _template:$_template, APPVM:$APPVM"
 
     qvm-create --class AppVM \
@@ -244,16 +278,13 @@ function create_media_appvms() {
     qvm-prefs $_appvm template_for_dispvms True
     qvm-features $_appvm appmenus-dispvm 1
     qvm-volume extend $_appvm:private 8192mb
-    qvm-start $_appvm
 
-    qvm-copy-to-vm $_appvm $_CONFIGDIR/configure_client
-    notify 0 "  configuring _appvm $_appvm: install firefox addons, set/fix firefox homepage, set cache"
-    qvm-run -p -u root $_appvm "bash /home/user/QubesIncoming/dom0/configure_client"
-    qvm-run -p $_appvm "rm -rf /home/user/QubesIncoming"
+    qvm-start $_appvm
+    config_user $_appvm
     qvm-shutdown $_appvm 
 
     # create media
-    local _appvm=media
+    declare _appvm=media
     check_vm $_appvm
 
     qvm-create --class AppVM \
@@ -263,6 +294,10 @@ function create_media_appvms() {
         --prop=memory=1024 \
         $_appvm
     qvm-volume extend $_appvm:private 8192mb
+
+    qvm-start $_appvm
+    config_user $_appvm
+    qvm-shutdown $_appvm 
 }
 
 
@@ -270,7 +305,7 @@ function install_printer_soft () {
     local TEMPLATE=$1
     local brotherinst=linux-brprinter-installer-2.2.1-1
 
-    if [ "$DEBUG" ]; then echo "--install_printer_soft TEMPLATE:$TEMPLATE"; fi
+    notify 1 "--install_printer_soft TEMPLATE:$TEMPLATE"
     sleep 5 # wait for install to complete
 
     qvm-shutdown $TEMPLATE
