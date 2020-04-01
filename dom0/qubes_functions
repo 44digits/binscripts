@@ -26,6 +26,43 @@ function zenity_fix () {
 }
 
 
+function qube_get_ostype () {
+    declare _vm=$1
+    declare _ostype=$(qvm-run -p $_vm "hostnamectl" \
+        | grep -i "operating" \
+        | cut -d' ' -f 5 )
+    echo $_ostype
+}
+
+
+function qube_get_osversion () {
+    declare _vm=$1
+    declare _osversion
+    declare _os=$(qvm-run -p $_vm "hostnamectl" \
+        | grep -i "operating" )
+
+    declare _ostype=$(echo "$_os" \
+        | cut -d' ' -f 5 )
+
+    case $_ostype in
+        "Debian")
+            _osversion=$(echo $_os \
+                | cut -d'(' -f 2 \
+                | tr -d ')' )
+            ;;
+        "Fedora")
+            _osversion=$(echo $_os \
+                | tr -dc '[:digit:]')
+            ;;
+        *)
+            notify 0 "ERROR: qube_get_osversion: unknown OStype:$_ostype"
+            exit 1
+            ;;
+    esac
+    echo $_osversion
+}
+
+
 function qube_get_state () {
     declare _vm=$1
     declare _state
@@ -80,16 +117,36 @@ function qube_run_commands () {
 }
 
 
+function qube_copy_file () {
+    declare _vm=$1
+    declare _user=$2
+    declare _srcfile=$3
+    declare _destfile=$4
+    declare _file=$(basename $_srcfile)
+
+    qvm-copy-to-vm $_vm $_srcfile
+    qvm-run \
+        $__qvm_run_options \
+        -u "$_user" \
+        "$_vm" \
+        "mv /home/user/QubesIncoming/dom0/$_file $_destfile"
+
+}
+
+
 function qube_write_file () {
     declare _vm=$1
     declare _user=$2
     declare _file=$3
     declare _lines="${@:4}"
-    declare _line
 
     notify 2 "qube_write_file: VM:$_vm user:$_user file:$_file"
 
-    qvm-run $__qvm_run_options -u "$_user" "$_vm" "echo > $_file"
+    qvm-run \
+        $__qvm_run_options \
+        -u "$_user" \
+        "$_vm" \
+        "echo > $_file"
     qube_append_file $_vm $_user $_file "$_lines"
 }
 
@@ -105,14 +162,18 @@ function qube_append_file () {
 
     while read -r _line <&3; do
         notify 2 "qube_append_file: --$_line--"
-        qvm-run $__qvm_run_options -u "$_user" "$_vm" "echo $_line >> $_file"
+        qvm-run \
+            $__qvm_run_options \
+            -u "$_user" \
+            "$_vm" \
+            "echo $_line >> $_file"
     done 3<<< "$_lines"
 }
 
 
-function qube_update () {
+function qube_update_vm () {
     declare _vm=$1
-    declare _ostype=$2
+    declare _ostype=$(qube_get_ostype $_vm)
     declare _cmd
     notify 2 "qube_update: vm:$_vm ($_ostype)"
 
@@ -145,8 +206,8 @@ EOF
 
 function qube_install_software () {
     declare _vm=$1
-    declare _ostype=$2
-    declare _software=$3
+    declare _ostype=$(qube_get_ostype $_vm)
+    declare _software=$2
     notify 2 "qube_install_software: vm:$_vm ostype:$_ostype software:$_software"
 
     # software list delineated by '&'
@@ -169,62 +230,5 @@ function qube_install_software () {
 
 
 
-function disk_busy () {
-    # check if hard disk is under load
-    #   return 1 or 0
-    declare _diskthreshold=10000
-    declare _sum_diff
-    declare _diff_data=()
-    declare _raw_disk_data
-    declare _diskdata1
-    declare _diskdata2
-
-    _raw_disk_data=$(cat /proc/diskstats \
-        | grep "sda " \
-        | tr -s ' ' \
-        | cut -d' ' -f 5-19 )
-    _diskdata1=($_raw_disk_data)
-
-    sleep 1
-
-    _raw_disk_data=$(cat /proc/diskstats \
-        | grep "sda " \
-        | tr -s ' ' \
-        | cut -d' ' -f 5-19 )
-    _diskdata2=($_raw_disk_data)
-
-    for i in ${!_diskdata2[@]}; do
-        _diff_data+=( $(( ${_diskdata2[$i]} - ${_diskdata1[$i]} )) )
-    done
-
-    _sum_diff=$(IFS=+; echo "$((${_diff_data[*]}))")
-
-    if [[ $_sum_diff -gt $_diskthreshold ]]; then
-        echo 1  # disk busy
-    else
-        echo 0  # disk not busy
-    fi
-}
 
 
-function wait_disk_ready () {
-    # return when hard disk is no longer under load
-    declare _seconds
-    declare _DISKCHECKS=0
-
-    while true; do 
-        _DISKCHECKS=0
-
-        for i in {1..4}; do 
-            _seconds=$(awk 'BEGIN{srand(); print rand() *2 }')
-            sleep $_seconds
-            _DISKCHECKS=$(( $_DISKCHECKS + $(disk_busy) ))
-        done 
-
-        if [[ $_DISKCHECKS -eq 0 ]]; then
-            break
-        fi
-    done
-}
-
- 
