@@ -1,0 +1,323 @@
+#!/bin/bash
+
+# launcher
+# manage launching apps in specific vms
+# system tools, etc.
+#
+# 2020.03.11
+
+source $(dirname "$0")/qubes_functions
+
+__DIALOGHEIGHT=750
+__DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
+    ..............................
+    fedora-30-dvm 
+    media-dvm
+    plus-dvm
+    printer-dvm
+    ..............................
+    dev
+    files
+    fin
+    gpg
+    tex
+    transfer
+    work
+EOF
+)
+
+__APPS=$(cat <<EOF | tr '[[:space:]]' ' '
+    ..............................
+    .plugins
+    <pass>
+    <search>
+    <url>
+    aljazeera.com
+    democracynow.org
+    gmail.com
+    google.com
+    linkedin.com
+    privateemail.com
+    workflowy.com
+    ..............................
+    calibre
+    classicFM
+    chromium
+    firefox
+    gedit
+    gnome-terminal
+    hangouts
+    hostnames
+    kodi
+    nautilus
+    xterm
+    ..............................
+    scan
+    vpn
+    ping
+    shutdown
+    startup
+EOF
+)
+
+__DVM=fedora-30-dvm 
+__VPN_NETWORK=sys-vpn-ro
+__qvm_run_options="-vp --color-stderr=37"
+
+
+
+function get_vmname () {
+    declare _vms=$(qvm-ls --raw-list --running --exclude dom0 --all \
+        | sort \
+        | tr '[[:space:]]' ' ')
+    declare _vm=$(zenity_fix \
+        --height=$__DIALOGHEIGHT \
+        --list \
+        --title="VM" \
+        --column="VM" \
+        $_vms $__DVMS)
+    echo $_vm
+}
+
+
+function qube_num_running () {
+    declare _num_running 
+
+    _num_running=$(qvm-ls --running --raw-list \
+        | grep -v 'dom0' \
+        | wc -l)
+    echo $_num_running
+}
+
+
+
+function qvm_firefox () {
+    declare _vm="$1"
+    declare _url="${@:2}"
+
+    qvm-run \
+        $__qvm_run_options \
+        --dispvm=$_vm \
+        "firefox $_url" &
+}
+
+
+
+function qvm_chrome () {
+    declare _vm="$1"
+    declare _url="${@:2}"
+
+    qvm-run \
+        $__qvm_run_options \
+        --dispvm=$_vm \
+        "chromium --password-store=basic $_url" &
+}
+
+
+
+function firefox_plugins () {
+    declare _urls=$(tr -s [:space:] ' ' <<EOF
+        https://addons.mozilla.org/en-US/firefox/addon/noscript/ 
+        https://addons.mozilla.org/en-US/firefox/addon/adblock-plus/
+EOF
+    )
+    qvm_firefox $__DVM $_urls
+}
+
+
+
+function firefox_work () {
+    declare _urls=$(tr -s [:space:] ' ' <<EOF
+        http://workflowy.com/login/
+        https://trello.com/login
+        https://stackoverflow.com/users/login
+        https://datascience4sd.slack.com
+        https://crisismapperscovid-19.slack.com/
+EOF
+    )
+    qvm_firefox $__DVM "$_urls"
+}
+
+
+
+function chrome_linkedin () {
+    qvm_chrome plus-dvm "https://linkedin.com"
+}
+
+
+
+function launcher_main () {
+    declare _app_selected=$(zenity_fix \
+        --height=$__DIALOGHEIGHT \
+        --list \
+        --title="Application" \
+        --column="Application" \
+        $__APPS)
+
+    if [[ "$_app_selected" ]]; then
+        case $_app_selected in
+            # web bookmarks
+           '<pass>')
+                declare _passstring=$(zenity_fix \
+                    --entry \
+                    --title="Pass:")
+                if [[ ! -z "$_passstring" ]]; then
+                    wait_disk_ready
+                    qvm-run \
+                        $__qvm_run_options \
+                        gpg \
+                        "gnome-terminal -e \"bash -c 'grep $_passstring logins_2020;bash'\""
+                fi
+                ;;
+                
+            '<search>')
+                declare _searchstring=$(zenity_fix \
+                    --entry \
+                    --title="Search terms:")
+                if [[ ! -z "$_searchstring" ]]; then
+                    wait_disk_ready
+                    qvm_firefox $__DVM "-search \"$_searchstring\""
+                fi
+                ;;
+
+            '<url>')
+                declare _url=$(zenity_fix \
+                    --entry \
+                    --title="URL")
+                wait_disk_ready
+                qvm_firefox $__DVM "$_url"
+                ;;
+
+            democracynow.org | aljazeera.com)
+                wait_disk_ready
+                qvm_chrome media-dvm "$_app_selected"
+                ;;
+
+            google.com | gmail.com | privateemail.com)
+                wait_disk_ready
+                qvm_firefox $__DVM $_app_selected
+                ;;
+
+            linkedin.com)
+                wait_disk_ready
+                chrome_linkedin
+                ;;
+
+            workflowy.com)
+                wait_disk_ready
+                firefox_work
+                ;;
+
+            .plugins)
+                wait_disk_ready
+                firefox_plugins
+                ;;
+
+            # apps to run in any vm or dvm
+            classicFM)
+                wait_disk_ready
+                qvm-run \
+                    $__qvm_run_options \
+                    media \
+                    "vlc /home/user/media/ClassicFMMP3.m3u" &
+                ;;
+
+            chromium | firefox | gedit | nautilus | xterm | gnome-terminal)
+                declare _vm=$(get_vmname)
+
+                wait_disk_ready
+                if [[ "$_vm" ]]; then 
+                    if [[ "$_vm" == *"dvm"* ]]; then
+                        wait_disk_ready
+                        qvm-run \
+                            $__qvm_run_options \
+                            --dispvm=$_vm \
+                            "$_app_selected" &
+                    else
+                        wait_disk_ready
+                        qvm-run \
+                            $__qvm_run_options \
+                            $_vm \
+                            "$_app_selected" &
+                    fi
+                fi
+                ;;
+
+            hostnames)
+                declare _vm=$(get_vmname)
+                if [[ "$_vm" ]]; then 
+                    ~/bin/hostnames $_vm; 
+                fi
+                ;;
+
+            # apps for specific vms
+            hangouts)
+                wait_disk_ready
+                qvm_chrome usb03 "https://hangouts.google.com"
+                ;;
+
+            calibre)
+                wait_disk_ready
+                qvm-run $__qvm_run_options epub "calibre" &
+                ;;
+                
+            kodi)
+                wait_disk_ready
+                qvm-run $__qvm_run_options media "kodi" &
+                ;;
+                
+            scan)
+                wait_disk_ready
+                qvm-run \
+                    $__qvm_run_options \
+                    --dispvm=printer-dvm \
+                    "xterm -e scanBro" &
+                ;;
+            vpn)
+                wait_disk_ready
+                qvm-start --skip-if-running $__VPN_NETWORK
+
+                wait_disk_ready
+                qvm-run \
+                    --dispvm=vpn-dvm \
+                    "/home/user/startup"
+
+                qvm-shutdown $__VPN_NETWORK
+                ;;
+            # system maintenance
+            ping)
+                qvm-run \
+                    $__qvm_run_options \
+                    sys-firewall \
+                    'xterm -e ping google.com'
+                ;;
+            shutdown)
+                while [[ "$(qube_num_running)" -gt "0" ]]; do
+                    qvm-shutdown --all
+                    sleep 15
+                done
+                ;;
+            startup)
+                wait_disk_ready
+                qvm_firefox $__DVM "gmail.com"
+                
+                wait_disk_ready
+                firefox_plugins
+
+                wait_disk_ready
+                firefox_work
+
+                wait_disk_ready
+                chrome_linkedin
+                ;;
+
+            *)
+                ;;
+
+        esac
+    fi
+}
+
+launcher_main
+
+

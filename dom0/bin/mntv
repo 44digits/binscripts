@@ -1,0 +1,45 @@
+#!/bin/bash
+
+echo -e "Mounting vault"
+gocryptfs /home/user/.vault/ /home/user/vault/
+
+if [ $? -ne 0 ]; then
+	echo -e "\nUnable to mount vault"
+	read X
+	exit 1
+fi
+
+if [ -f ~/vault/fin/gnuCash/finances.sqlite.gnucash.gz ]; then
+    echo "Un-compressing finances"
+    gunzip ~/vault/fin/gnuCash/finances.sqlite.gnucash.gz
+else
+    echo "Gnucash finances not compressed"
+fi
+
+echo
+mount | grep user
+echo -e "\nWaiting...\n"
+read X
+
+echo -e "Cleanup? (Y/n)"
+read X
+
+if [ "$X" != "n" ]; then
+	/home/user/vault/delPerm
+fi
+
+echo -e "\nUnmounting vault"
+
+if [ -f ~/vault/fin/gnuCash/finances.sqlite.gnucash ]; then
+    echo "Compressing finances"
+    gzip ~/vault/fin/gnuCash/finances.sqlite.gnucash
+else
+    echo "Gnucash finances not found - not compressed"
+fi
+
+
+sudo umount /home/user/vault
+echo
+
+
+

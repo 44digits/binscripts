@@ -1,0 +1,76 @@
+#!/bin/bash
+
+TMPDIR=`pwd`
+DEVICEID=$(scanimage -L \
+    | grep brother4 \
+    | cut -d ' ' -f 2 \
+    | tr -d "\`\'")
+SCANFORMAT="scan%03d.pnm"
+
+echo "Device: $DEVICEID"
+
+
+while [ 1 ]; do
+    echo -e "\n-----------------------\nReady to scan"
+    echo -en "---File name: "
+    read FILENAME
+    if [ ${#FILENAME} -eq 0 ]; then
+        exit 0;
+    fi
+
+    echo -en "---Letter/Legal (L/g):"
+    read PAPERSIZE
+    echo -en "---Colour/Grey (C/g):"
+    read IMAGETYPE
+    echo -en "---Edit image (y/N):"
+    read EDITIMAGE
+
+    if [ "$PAPERSIZE" = "g" ]; then
+        IMAGE_DIM="-x 216 -y 356"
+        RESIZE_DIM="1700x2800!"
+    else
+        IMAGE_DIM="-x 216 -y 279"
+        RESIZE_DIM="1700x2200!"
+    fi
+
+    if [ "$IMAGETYPE" = "g" ]; then
+        SANETYPE=Gray
+        IMAGEMAGICKTYPE=Grayscale
+    else
+        SANETYPE=Color
+        IMAGEMAGICKTYPE=Optimize
+    fi
+
+    /usr/bin/scanimage -p -d \
+        "$DEVICEID" \
+        $IMAGE_DIM \
+        --resolution 200 \
+        --batch=$SCANFORMAT
+
+    for f in $(ls *.pnm); do
+        /usr/bin/convert $f \
+            -type $IMAGEMAGICKTYPE \
+            -density 200 \
+            -gamma .4 \
+            -deskew 80% \
+            -resample 200x200 \
+            -resize $RESIZE_DIM \
+            "$TMPDIR/$f.jpg"
+
+        if [ "$EDITIMAGE" = "y" ]; then
+            /usr/bin/gimp "$TMPDIR/$f.jpg"
+        fi
+
+        /usr/bin/convert "$TMPDIR/$f.jpg" \
+            -contrast \
+            -unsharp 50 \
+            -compress JPEG \
+            -quality 75 \
+            "$TMPDIR/$f.pdf"
+    done
+
+    pdftk *pnm.pdf cat output "$FILENAME.pdf"
+
+    rm $TMPDIR/*pnm*
+done
+

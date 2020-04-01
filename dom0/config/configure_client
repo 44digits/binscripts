@@ -1,0 +1,16 @@
+#!/bin/bash
+#
+# configure client
+# 
+# 2019.05.14
+
+dconf write /org/gnome/nautilus/preferences/default-folder-viewer "'list-view'"
+dconf write /org/gnome/nautilus/list-view/use-tree-view true
+dconf write /org/gnome/nautilus/list-view/defualt-zoom-level "'small'"
+dconf write /org/gtk/settings/file-chooser/sort-directories-first true
+dconf write /org/gtk/settings/file-chooser/expand-folders true
+
+firefox https://addons.mozilla.org/en-US/firefox/addon/umatrix/ https://addons.mozilla.org/en-US/firefox/addon/noscript/ https://addons.mozilla.org/en-US/firefox/addon/adblock-plus/ https://addons.mozilla.org/en-US/firefox/addon/disabled-add-on-fix-57-60/
+
+echo -e "\n\nalias rm='rm -i'" >> ~/.bashrc
+

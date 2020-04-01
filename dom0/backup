@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# bakup
+# tar relevant directories and copy to file server
+
+TARNAME="dom0_backup_$(date +"%Y%m%d-%H%M%S").tgz"
+DIRS="bin Desktop"
+DESTVM=dev
+
+echo "Backup dom0"
+echo "  $TARNAME: $DIRS"
+echo
+
+tar -C ~/ -cvzf $TARNAME $DIRS
+qvm-copy-to-vm $DESTVM $TARNAME
+
+qvm-run -p $DESTVM "mv ~/QubesIncoming/dom0/$TARNAME ~/system/dom0/"
+
+echo "...done"

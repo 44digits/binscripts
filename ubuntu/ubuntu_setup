@@ -1,0 +1,348 @@
+#!/bin/bash
+
+#####################################################################
+# ubuntu_setup
+#
+# bash script to automate the initial setup of an ubuntu system
+#
+# Date: 2019.12.06
+#
+#####################################################################
+
+
+declare __STANDARDSOFTWARE=$(tr -s [:space:] '&' <<EOF
+    audacity
+    calibre
+    ccrypt
+    chromium-browser
+    cryptsetup
+    ecryptfs-utils 
+    evince
+    gimp
+    gnome-shell-extensions
+    gnome-tweak-tool
+    gnucash
+    gocryptfs
+    inkscape
+    jmtpfs
+    kodi
+    lame
+    libavcodec-extra
+    libdbd-sqlite3
+    liblzma-dev
+    libreoffice
+    lzip
+    pdfshuffler
+    s3cmd
+    screen
+    scrypt
+    sqlite3
+    tmux
+    ubuntu-restricted-extras
+    vim
+    virtualbox
+    vlc
+    wget
+    xournal
+    xsane
+    xterm
+EOF
+)
+
+declare __GISSOFTWARE=$(tr -s [:space:] '&' <<EOF
+	gdal-bin
+	gpsbabel
+	qgis
+	spatialite-bin
+	spatialite-gui
+EOF
+)
+
+declare __DEVELOPMENTSOFTWARE=$(tr -s [:space:] '&' <<EOF
+    build-essential
+    checkinstall
+    git
+    libbz2-dev 
+    libc6-dev 
+    libffi-dev
+    libgdbm-dev
+    libncurses5-dev
+    libncursesw5-dev
+    libnss3-dev
+    libreadline-gplv2-dev 
+    libsqlite3-dev 
+    libssl-dev
+    nodejs
+    npm
+    python3-dev
+    python3-pip
+    python3-venv
+    tk-dev 
+    zlib1g-dev
+EOF
+)
+
+declare __SNAPS=$(tr -s [:space:] '&' <<EOF
+	pdftk
+EOF
+)
+
+
+declare _SOFTWARELIST="$__STANDARDSOFTWARE$__GISSOFTWARE$__DEVELOPMENTSOFTWARE"
+#declare _PYTHONURL="https://www.python.org/ftp/python/3.8.0/Python-3.8.0.tar.xz"
+declare _PYTHONURL="https://www.python.org/ftp/python/3.8.1/Python-3.8.1.tar.xz"
+declare _BACKUPFOLDER="$HOME/bak"
+declare _CONFIGFOLDER=$(dirname "$0")
+
+__notifylevel=2
+
+function notify () {
+    # centralized function to notify/echo messages currently sent for STDERR on 2
+    # _level is arbitrary - but generally:
+    #       0 - run error, program will exit
+    #       1 - general info
+    #       2 - more detail, debugging info
+    declare _level=$1
+    declare _msg=${@:2}
+
+    if [[ "$__notifylevel" -ge "$_level" ]]; then
+        cat <<< "$_msg" 1>&2
+    fi
+}
+
+
+function print_help() {
+    echo "Usage: ubuntu_setup (-a | -i | -s | -u)"
+    echo "  where a: all, i: install software, s: config system, u: config user"
+}
+
+
+function check_url () {
+    declare _url=$1
+    declare _status
+
+    if [[ $(wget --spider $_url 2>&1 | grep "broken") ]]; then 
+        _status="broken"
+    else
+        _status=0
+    fi
+
+    notify 2 "check_url: $_status"
+    echo $_status
+}
+
+
+function backup_file () {
+    declare _filewithpath
+    eval _filewithpath=$1
+    #declare _file=$(basename $_filewithpath | tr '.' '_' )
+    declare _file=$(basename $_filewithpath | sed -e 's/^\./_/')
+    declare _now=$(date +%Y%m%d%H%M%S)
+    declare __backupfolder
+
+    notify 2 "backup_file: filewithpath:$_filewithpath, file:$_file, now:$_now"
+    
+    eval __backupfolder=$_BACKUPFOLDER
+    mkdir -p $__backupfolder
+    cp $_filewithpath "$__backupfolder/$_file-$_now"
+}
+
+
+function append_file () {
+    declare _file
+    eval _file=$1
+    declare _lines="${@:2}"
+    declare _line
+
+    notify 1 "append_file: appending to $_file"
+    while read -r _line <&3; do
+        notify 2 "append_file: -- $_line"
+        echo "$_line" >> $_file
+    done 3<<< "$_lines"
+}
+
+
+function get_osversion () {
+    declare _osversion=$(lsb_release -a 2>/dev/null \
+        | grep -i "codename" \
+        | cut -f 2)
+    echo $_osversion
+}
+
+
+function update_system () {
+    notify 1 "update_system"
+
+    sudo apt-get -y update
+    sudo apt-get -y upgrade
+    sudo apt-get -y dist-upgrade
+    sudo apt-get -y clean
+    sudo apt-get -y remove
+    sudo apt-get -y autoremove
+}
+
+
+function install_software () {
+    declare _software=$1
+    # software list delineated by '&'
+    declare _softwarelist=$(echo $_software | tr '&' ' ')
+
+    notify 1 "install_software: software:$_software"
+
+    sudo apt-get -y install $_softwarelist
+}
+
+
+function install_snaps () {
+    declare _snaps=$1
+    # software list delineated by '&'
+    declare _snaplist=$(echo $_snaps | tr '&' ' ')
+
+    notify 1 "install_snaps: snaps:$_snaps"
+
+    sudo snap install $_snaplist
+}
+
+
+function add_gis_repos () {
+    declare _commands
+    declare _osversion=$(get_osversion)
+
+    notify 1 "add_gis_repos"
+
+    sudo su -c "echo \"deb https://qgis.org/ubuntu $_osversion main\" > /etc/apt/sources.list.d/qgis.list"
+    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-key 51F523511C7028C3
+
+    sudo apt-get -y update
+}
+
+
+function config_system () {
+    declare _lines
+    declare _now=$(date +%Y%m%d%H%M%S)
+
+    notify 1 "config_system: now:$_now"
+
+    backup_file /etc/hosts
+    sudo cp _hosts /etc/hosts
+}
+
+
+function config_user () {
+    declare _lines
+    declare _now=$(date +%Y%m%d%H%M%S)
+
+    notify 1 "config_user: now:$_now"
+
+    _lines=$(cat <<EOF
+        alias rm="rm -i"
+        alias pvc="python3.8 -m venv venv"
+        alias pva="source ./venv/bin/activate"
+
+        export PATH=\$PATH:\$HOME/bin
+        export EDITOR="/usr/bin/vim"
+        export GOPATH=\$HOME/go
+EOF
+    )
+
+    backup_file $HOME/.bashrc
+    append_file "$HOME/.bashrc" "$_lines"
+    
+    backup_file $HOME/.vimrc
+    cp $_CONFIGFOLDER/_vimrc $HOME/.vimrc
+
+    backup_file $HOME/.screenrc
+    cp $_CONFIGFOLDER/_screenrc $HOME/.screenrc
+
+    # update nautilus settings
+    #   https://www.yesterdayscoffee.de/2019/07/23/tree-view-in-nautilus-on-ubuntu-18-04/
+    gsettings set org.gnome.nautilus.preferences default-folder-viewer 'list-view'
+    gsettings set org.gnome.nautilus.list-view use-tree-view true
+
+    # switch windows with Alt-Tab
+    #   https://askubuntu.com/questions/1036248/how-to-separate-opened-windows-in-alttab-switcher-in-ubuntu-18-04
+    gsettings set org.gnome.desktop.wm.keybindings switch-windows "['<Alt>Tab']"
+    gsettings set org.gnome.desktop.wm.keybindings switch-windows-backward "['<Shift><Alt>Tab']"
+    gsettings set org.gnome.desktop.wm.keybindings switch-applications "['<Super>Tab']"
+    gsettings set org.gnome.desktop.wm.keybindings switch-applications-backward "['<Shift><Super>Tab']"
+}
+
+
+function install_python3 () {
+    declare __pyarc=$(basename $_PYTHONURL)
+    declare __pydir="/tmp/$(basename -s .tar.xz $_PYTHONURL)"
+    declare __pyasc
+    declare __pyascurl
+    declare __dummy
+    declare __filemd5
+    declare __pymd5
+
+    notify 1 "Installing python from $_PYTHONURL"
+    if [[ $(check_url $_PYTHONURL) -ne 0 ]]; then
+        notify 0 "ERROR: unable to access geoserver url: $_PYTHONURL"
+        exit 1
+    fi
+
+    wget -c -P /tmp $_PYTHONURL
+
+    # check integrity/security
+    # imported signing key with:
+    #    wget -O - https://keybase.io/ambv/pgp_keys.asc | gpg --import
+    echo 
+    read -p "Enter signature/asc URL for Python archive: " __pyascurl
+    wget -c -P /tmp $__pyascurl
+    __pyasc="/tmp/$(basename $__pyascurl)"
+    gpg --verify $__pyasc "/tmp/$__pyarc"
+    read -p "Continue? " __dummy
+    echo
+    read -p "Enter md5 signature for Python archive: " __pymd5
+    md5sum "/tmp/$__pyarc"
+    __filemd5=$(md5sum "/tmp/$__pyarc" | cut -d' ' -f 1)
+    if [[ "$__filemd5" == "$__pymd5" ]]; then 
+        echo "MD5 matches"
+    else
+        echo "MD5 does not match"
+    fi
+    read -p "Continue? " __dummy
+
+    tar -xvJf "/tmp/$__pyarc" -C /tmp
+    cd $__pydir && ./configure --enable-optimizations
+    make -j 8 -C $__pydir
+
+    notify 1 ""
+    notify 1 "installing Python" 
+    sudo make -C $__pydir altinstall 
+}
+
+
+
+getopts "aisup" OPTION
+case $OPTION in
+    a)
+        update_system
+        add_gis_repos 
+        install_software $_SOFTWARELIST
+        install_snaps $_SNAPS
+        config_system
+        config_user
+        ;;
+    i)
+        update_system
+        add_gis_repos 
+        install_software $_SOFTWARELIST
+        install_snaps $_SNAPS
+        ;;
+    s)
+        config_system
+        ;;
+    u)
+        config_user
+        ;;
+    p)
+        install_python3 
+        ;;
+    *)
+        print_help
+        exit 1
+        ;;
+esac

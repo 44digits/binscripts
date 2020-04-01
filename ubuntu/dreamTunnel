@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# dreamTunnel
+# create a SOCKS tunnel through dreamhost.com
+# from: http://wiki.dreamhost.com/SSH_Tunneling
+#
+# 2015.12.15
+
+source $(dirname "$0")/secrets
+
+echo "dreamTunnel"
+echo "Set SOCKS proxy to 127.0.0.1 port 9999"
+
+ssh -CND 9999 $DREAMUSER
+
+

@@ -1,0 +1,10 @@
+
+alias rm="rm -i"
+alias pvc="python3.7 -m venv venv"
+alias pva="source ./venv/bin/activate"
+
+export EDITOR="/usr/bin/vim"
+export QUBES_GPG_DOMAIN=gpg
+export GOPATH=$HOME/go
+
+

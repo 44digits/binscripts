@@ -1,0 +1,15 @@
+#!/bin/bash
+#
+# chromiumDelete 
+# start chromium web browser with empty cache & settings
+#
+# 2015.10.25
+# start without acceleration
+# http://jamison.dance/post/22387219496/turning-off-gpu-acceleration-in-google-chrome/
+# http://askubuntu.com/questions/651413/google-chrome-44-0-2403-89-1-crashes-ubuntu
+
+rm -rf ~/.config/chromium/ ~/.cache/chromium/
+/usr/bin/chromium-browser --proxy-server="socks5://localhost:9999" --disable-gpu --blacklist-webgl --disable-accelerated-2d-canvas --disable-accelerated-compositing --disable-accelerated-layers "$*"
+rm -rf ~/.config/chromium/ ~/.cache/chromium/
+
+

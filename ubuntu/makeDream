@@ -1,0 +1,10 @@
+#! /bin/bash
+
+# makeDream
+# create a dreamhost tunnel 
+#     add SOCKS proxy to browser
+
+source $(dirname "$0")/secrets
+
+ssh -D localhost:8080 $DREAMUSER
+

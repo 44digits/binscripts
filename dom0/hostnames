@@ -1,0 +1,15 @@
+#!/bin/bash
+
+VM=$1
+
+read -r -d '' HOSTLIST <<EOF 
+192.168.1.40     khormaloo
+
+EOF
+
+while read -r  h; do
+    echo "" | qvm-run -p $VM "echo $h | sudo tee -a /etc/hosts >/dev/null"
+
+done <<<"$HOSTLIST"
+
+

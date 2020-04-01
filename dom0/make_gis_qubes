@@ -1,0 +1,722 @@
+#!/bin/bash
+
+# make_gis_qubes
+#
+# Create GIS desktop and GIS server Qubes with a single GIS template
+# containing QGIS, Postgres, and Geoserver.
+#
+# Author: Andrew Ross
+# Date: 2019 September 10
+# 
+# Usage: copy to dom0 and run with the following from dom0: 
+#         qvm-rum -p <name of qube> 'cat make_gis_qubes' > make_gis_qubes
+#         chmod +x make_gis_qubes
+#         ./make_gis_qubes
+#
+# Warning: it's risky to run anything in dom0!
+#   Please ensure you read and understand this script
+#
+# References:
+#   QGIS installation: 
+#       https://qgis.org/en/site/forusers/alldownloads.html
+#   Postgis: 
+#       https://postgis.net/install/
+#       https://wiki.postgresql.org/wiki/First_steps
+#       https://blog.mclaughlinsoftware.com/2019/08/19/postgres-on-fedora-30/
+#   Geoserver: 
+#       http://geoserver.org/release/stable/
+#       https://docs.geoserver.org/stable/en/user/production/linuxscript.html
+#   Qubes firewall: 
+#       https://www.qubes-os.org/doc/firewall/
+
+
+###############################################################################
+# The MIT License (MIT)
+# 
+# Copyright © 2019 Andrew Ross
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy of
+# this software and associated documentation files (the “Software”), to deal in
+# the Software without restriction, including without limitation the rights to
+# use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+# of the Software, and to permit persons to whom the Software is furnished to do
+# so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+
+###############################################################################
+# Global variables
+#
+# MASTERTEMPLATE name of template to clone, debian or fedroa
+# GISTEMPLATEVM  name of GIS template
+# GISDESKTOPVM   name of GIS desktop Appvm
+# GISSERVERVM    name of GIS server Appvm
+# GEOSERVERURL   URL of Geoserver zip - needs to be updated whenever 
+#                Geoserver is updated
+
+_MASTERTEMPLATE=debian-9
+_GISTEMPLATEVM="$_MASTERTEMPLATE-gis"
+
+_GISDESKTOPVM=gis_desktop
+_GISSERVERVM=gis_server
+_GEOSERVERURL=http://sourceforge.net/projects/geoserver/files/GeoServer/2.15.2/geoserver-2.15.2-bin.zip
+
+# GIS software package list
+_GISSOFTWARE=$(tr -s [:space:] '&' <<EOF
+    eog
+    evince
+    git
+    gpsbabel
+    nautilus
+    postgis
+    python3-pip
+    qgis
+    spatialite-gui
+    tmux
+EOF
+)
+
+
+# Fedora specific packages
+_GISSOFTWARE_FEDORA=$(tr -s [:space:] '&' <<EOF
+    gdal
+    gdal-python-tools
+    java-latest-openjdk
+    pgadmin3
+    postgresql11
+    postgresql11-server
+    python3-devel
+    python3-qgis
+    spatialite-tools
+    sqlite
+EOF
+)
+
+# Debian specific packages
+_GISSOFTWARE_DEBIAN=$(tr -s [:space:] '&' <<EOF
+    default-jre
+    gdal-bin
+    pgadmin4
+    postgresql 
+    postgresql-client 
+    python-gdal
+    python-qgis
+    python3-dev
+    python3-venv
+    spatialite-bin
+    sqlite3
+EOF
+)
+
+
+###############################################################################
+# Helper functions
+#
+
+__qvm_run_options="-p --color-stderr=37"
+__notifylevel=1
+
+
+function notify () {
+    # centralized function to notify/echo messages currently sent for STDERR on 2
+    # _level is arbitrary - but generally:
+    #       0 - run error, program will exit
+    #       1 - general info
+    #       2 - more detail, debugging info
+    declare _level=$1
+    declare _msg=${@:2}
+
+    if [[ "$__notifylevel" -ge "$_level" ]]; then
+        cat <<< "$_msg" 1>&2
+    fi
+}
+
+
+function qube_get_ostype () {
+    declare _vm=$1
+    declare _ostype=$(qvm-run -p $_vm "hostnamectl" \
+        | grep -i "operating" \
+        | cut -d' ' -f 5 )
+    echo $_ostype
+}
+
+
+function qube_get_osversion () {
+    declare _vm=$1
+    declare _osversion
+    declare _os=$(qvm-run -p $_vm "hostnamectl" \
+        | grep -i "operating" )
+
+    declare _ostype=$(echo "$_os" \
+        | cut -d' ' -f 5 )
+
+    case $_ostype in
+        "Debian")
+            _osversion=$(echo $_os \
+                | cut -d'(' -f 2 \
+                | tr -d ')' )
+            ;;
+        "Fedora")
+            _osversion=$(echo $_os \
+                | tr -dc '[:digit:]')
+            ;;
+        *)
+            notify 0 "ERROR: qube_get_osversion: unknown OStype:$_ostype"
+            exit 1
+            ;;
+    esac
+    echo $_osversion
+}
+
+
+function qube_get_state () {
+    declare _vm=$1
+    declare _state=$(qvm-ls -n --fields=STATE,NAME \
+        | grep -m 1 "$_vm" \
+        | cut -d' ' -f 1)
+
+    notify 2 "qube_get_state: $_vm $_state"
+    echo $_state
+}
+
+
+function qube_get_ip () {
+    declare _vm=$1
+    declare _ip=$(qvm-ls -n --fields=IP,NAME \
+        | grep -m 1 "$_vm" \
+        | cut -d' ' -f 1)
+
+    notify 2 "qube_get_ip: $_vm $_ip"
+    echo $_ip
+}
+
+
+function qube_wait_shutdown () {
+    declare _vm=$1
+
+    qvm-shutdown $_vm
+    while [[ "$(qube_get_state $_vm)" != "Halted" ]]; do 
+        sleep 3 
+    done
+    notify 2 "qube_wait_shutdown: $_vm halted"
+}
+
+
+function qube_run_commands () {
+    # because of tripple quoting of variables
+    #   escape each backslash twice
+    #   eg: \n --> \\\n
+
+    declare _vm=$1
+    declare _user=$2
+    declare _commands="${@:3}"
+    declare _cmd
+    if [[ -z "$_user" ]]; then _user="user"; fi
+    notify 2 "qube_run_commands: VM:$_vm user:$_user"
+
+    while read -r _cmd <&3; do
+        notify 2 "qube_run_commands: --$_cmd--"
+        qvm-run \
+            $__qvm_run_options \
+            -u "$_user" \
+            "$_vm" \
+            "$_cmd"
+    done 3<<< "$_commands"
+}
+
+
+function qube_write_file () {
+    declare _vm=$1
+    declare _user=$2
+    declare _file=$3
+    declare _lines="${@:4}"
+    notify 2 "qube_write_file: VM:$_vm user:$_user file:$_file"
+
+    qvm-run $__qvm_run_options -u "$_user" "$_vm" "echo > $_file"
+    qube_append_file $_vm $_user $_file "$_lines"
+}
+
+
+function qube_append_file () {
+    declare _vm=$1
+    declare _user=$2
+    declare _file=$3
+    declare _lines="${@:4}"
+    declare _line
+    notify 2 "qube_append_file: VM:$_vm user:$_user file:$_file"
+
+    while read -r _line <&3; do
+        notify 2 "qube_append_file: --$_line--"
+        qvm-run $__qvm_run_options -u "$_user" "$_vm" \
+            "echo \"$_line\" >> $_file"
+    done 3<<< "$_lines"
+}
+
+
+function qube_update_vm () {
+    declare _vm=$1
+    declare _ostype=$(qube_get_ostype $_vm)
+    declare _commands
+    notify 2 "qube_update: vm:$_vm ($_ostype)"
+
+    case $_ostype in
+        "Debian")
+            _commands=$(cat <<EOF
+                apt-get -y update
+                apt-get -y upgrade
+                apt-get -y dist-upgrade
+                apt-get -y clean
+                apt-get -y remove
+                apt-get -y autoremove
+EOF
+            )
+            ;;
+        "Fedora")
+            _commands=$(cat <<EOF
+                dnf upgrade -y
+                dnf clean all
+EOF
+            )
+            ;;
+        *)
+            notify 0 "ERROR: qube_update: unknown OStype:$_ostype"
+            exit 1
+            ;;
+    esac
+    qube_run_commands $_vm "root" "$_commands"
+}
+
+
+function qube_install_software () {
+    declare _vm=$1
+    declare _software=$2
+    declare _ostype=$(qube_get_ostype $_vm)
+    declare _installcmd
+    notify 2 "qube_install_software: vm:$_vm ostype:$_ostype software:$_software"
+
+    # software list delineated by '&'
+    declare _softwarelist=$(echo $_software | tr '&' ' ')
+
+    case $_ostype in
+        "Debian")
+            _installcmd="apt-get -y install $_softwarelist"
+            ;;
+        "Fedora")
+            _installcmd="dnf install -y $_softwarelist"
+            ;;
+        *)
+            notify 0 "ERROR: qube_install_software: unknown OStype:$_ostype"
+            exit 1
+            ;;
+    esac
+
+    qube_run_commands $_vm "root" "$_installcmd"
+}
+
+
+function qube_get_javahome () {
+    # See: https://www.baeldung.com/find-java-home
+    declare _vmname=$1
+    declare _javahome=$(qvm-run -p $_vmname "java -XshowSettings:properties -version 2>&1" \
+        | grep "java.home" \
+        | cut -d '=' -f 2 \
+        | tr -d '[:space:]' )
+
+    notify 2 "qube_get_javahome: $_javahome"
+    echo $_javahome
+}
+
+
+function check_url () {
+    declare _url=$1
+    declare _status
+
+    if [[ $(wget --spider $_url 2>&1 | grep "broken") ]]; then 
+        _status="broken"
+    else
+        _status=0
+    fi
+
+    notify 2 "check_url: $_status"
+    echo $_status
+}
+
+
+###############################################################################
+# Main functions
+#
+
+
+function add_gis_repos () {
+    declare _template=$1
+    declare _ostype=$(qube_get_ostype $_template)
+    declare _osversion=$(qube_get_osversion $_template)
+    declare _commands
+
+    notify 1 "Add_gis_repos: template:$_template ($_ostype / $_osversion)"
+
+    case $_ostype in
+        "Debian")
+            declare _postkey="https://www.postgresql.org/media/keys/ACCC4CF8.asc"
+            if [[ $(check_url $_postkey) -ne 0 ]]; then
+                notify 0 "ERROR: add_gis_repos: unable to access Postgres signing key: $_postkey"
+                exit 1
+            fi
+            _commands=$(cat <<EOF
+                echo "deb https://qgis.org/debian $_osversion main" > /etc/apt/sources.list.d/qgis.list
+                apt-key adv --keyserver keyserver.ubuntu.com --recv-key 51F523511C7028C3
+                echo "deb http://apt.postgresql.org/pub/repos/apt/ $_osversion-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+                wget -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+                apt-get -y update
+EOF
+            )
+            ;;
+        "Fedora")
+            declare _pgrpm="https://download.postgresql.org/pub/repos/yum/reporpms/F-$_osversion-x86_64/pgdg-fedora-repo-latest.noarch.rpm"
+            if [[ $(check_url $_pgrpm) -ne 0 ]]; then
+                notify 0 "ERROR: add_gis_repos: unable to access Fedora Postgres repo RPM: $_pgrpm"
+                exit 1
+            fi
+            _commands=$(cat <<EOF
+                dnf copr -y enable dani/qgis
+                dnf install -y $_pgrpm
+EOF
+            )
+            ;;
+        *)
+            notify 0 "ERROR: add_gis_repos: unknown OStype:$_ostype"
+            exit 1
+            ;;
+        esac
+
+        qube_run_commands $_template "root" "$_commands"
+}
+
+
+function configure_postgres () {
+    declare _template=$1
+    declare _ostype=$(qube_get_ostype $_template)
+    declare _pgconfigdir
+    declare _lines
+
+    notify 1 "configure_postgres: vm:$_template os:$_ostype"
+
+    # stop postgres from starting at boot as same template used for desktop
+    qvm-run $__qvm_run_options -u root $_template \
+        "systemctl disable postgresql"
+
+    case $_ostype in
+        "Debian")
+            _pgconfigdir="/etc/postgresql/11/main"
+            ;;
+        "Fedora")
+            _pgconfigdir="/var/lib/pgsql/data"
+            qvm-run $__qvm_run_options -u postgres $_template \
+                "/usr/bin/postgresql-setup --initdb"
+            ;;
+        *)
+            notify 0 "ERROR: configure_postgres: unknown OStype:$_ostype"
+            exit 1
+            ;;
+    esac
+
+    # allow postgres access from other Qubes
+    qube_append_file $_template "postgres" \
+        "$_pgconfigdir/postgresql.conf" \
+        "listen_addresses = '*'" 
+    
+    _lines=$(cat <<EOF
+        local  all  all  peer
+        host  all  postgres  127.0.0.1/32  trust
+        host  spatialdb  spatialadmin  all  trust
+EOF
+    )
+    qube_write_file $_template "postgres" \
+        "$_pgconfigdir/pg_hba.conf" \
+        "$_lines"
+}
+
+
+function install_geoserver () {
+    declare _template=$1
+    declare _url=$2
+    declare _zipfile=$(basename $_url)
+    declare _geoserverfolder=$(basename $_zipfile -bin.zip)
+    declare _lines
+    declare _commands
+
+    notify 2 "Installing geoserver from $_url"
+    if [[ $(check_url $_url) -ne 0 ]]; then
+        notify 0 "ERROR: unable to access geoserver url: $_url"
+        exit 1
+    fi
+
+    _lines=$(cat <<EOF
+		USER=geoserver
+        GEOSERVER_DATA_DIR=/var/lib/geoserver/data
+        GEOSERVER_HOME=/usr/share/geoserver
+        JAVA_HOME=$(qube_get_javahome $_template)
+        JAVA_OPTS="-Xms128m -Xmx512m"
+EOF
+    )
+    qube_write_file $_template "user" \
+        "/tmp/geoserver.default" \
+        "$_lines"
+
+    _lines=$(cat <<EOF
+        [Unit]
+        Description=GeoServer
+        After=network.target
+
+        [Service]
+        User=geoserver
+        EnvironmentFile=/etc/default/geoserver
+        ExecStart=/usr/share/geoserver/bin/startup.sh
+        ExecStop=/usr/share/geoserver/bin/shutdown.sh
+
+        [Install]
+        WantedBy=multi-user.target 
+EOF
+    )
+    qube_write_file $_template "user" \
+        "/tmp/geoserver.service" \
+        "$_lines"
+
+    # download, install geoserver, create geoserver init script
+    _commands=$(cat <<EOF
+        useradd -rU geoserver
+        wget -cq -P /tmp $_url
+        unzip -q -d /usr/share/ /tmp/$_zipfile
+        chown -R geoserver:geoserver /usr/share/$_geoserverfolder/
+        ln -s /usr/share/$_geoserverfolder /usr/share/geoserver
+        mkdir -p /var/lib/geoserver/data
+        chown -R geoserver:geoserver /var/lib/geoserver
+        cp /tmp/geoserver.default /etc/default/geoserver
+        cp /tmp/geoserver.service /etc/systemd/system/geoserver.service
+        rm /tmp/geoserver*
+EOF
+    )
+    qube_run_commands $_template "root" "$_commands"
+}
+
+
+function configure_gis_desktop () {
+    declare _vmname=$1
+    notify 2 "Configure_gis_desktop: $_vmname"
+
+    # library path needed for Fedora / postgresql
+    qube_append_file $_vmname "user" \
+        "/home/user/.bashrc" \
+        "export LD_LIBRARY_PATH=\\\"/usr/lib64\\\"" 
+}
+
+
+function configure_gis_server () {
+    # setup geoserver and postgres in server vm
+    declare _vmname=$1
+    declare _ostype=$(qube_get_ostype $_vmname)
+    declare _lines
+    declare _qubesbinddir
+    notify 2 "Configure_gis_server: $_vmname"
+
+    case $_ostype in
+        "Debian")
+            declare _postgresdata="/var/lib/postgresql/11/main"
+            ;;
+        "Fedora")
+            declare _postgresdata="/var/lib/pgsql/data"
+            ;;
+        *)
+            notify 0 "ERROR: configure_gis_server: unknown OStype:$_ostype"
+            exit 1
+            ;;
+    esac
+
+    _lines=$(cat <<EOF
+        exec 2> /tmp/rc.declare.log
+        exec 1>&2
+        set -x
+        sudo systemctl start geoserver
+        sudo systemctl start postgresql
+EOF
+    )
+
+    qube_append_file $_vmname "root" "/rw/config/rc.local" "$_lines"
+
+    # ensure postgres & geoserver data directories are saved
+    _qubesbinddir="/rw/config/qubes-bind-dirs.d"
+    qvm-run $__qvm_run_options -u root $_vmname "mkdir -p $_qubesbinddir"
+    _lines=$(cat <<EOF
+        binds+=( '$_postgresdata' )
+        binds+=( '/var/lib/geoserver/data' )
+EOF
+    )
+
+    qube_append_file $_vmname "root" "$_qubesbinddir/50_user.conf" "$_lines"
+
+    # reboot gis_server to ensure bind / rw directory is working
+    qube_wait_shutdown $_vmname 
+    sleep 2
+    qvm-start $_vmname 
+
+    # finalize postgres setup:
+    #   set postgres password
+    #   add spatialadmin user
+    #   create spatial db & schema
+    # these commands run in xterm to prevent dispaly of passwords
+    echo -e "\nPostgresql setup:"
+    echo "Enter passwords for postgres user and spatialadmin user"
+    _commands=$(cat <<EOF
+        echo -e "\\\nEnter password for POSTGRES user"
+        LD_LIBRARY_PATH="/usr/lib64" psql -c "\\\password"
+        echo -e "\\\nEnter password for SPATIALADMIN user"
+        LD_LIBRARY_PATH="/usr/lib64" createuser --pwprompt spatialadmin
+        LD_LIBRARY_PATH="/usr/lib64" createdb -O spatialadmin spatialdb
+        LD_LIBRARY_PATH="/usr/lib64" psql -d spatialdb -c "CREATE EXTENSION postgis"
+        LD_LIBRARY_PATH="/usr/lib64" psql -h 127.0.0.1 -U spatialadmin -d spatialdb -c "CREATE SCHEMA spatial"
+EOF
+    )
+    qube_run_commands $_vmname "postgres" "$_commands"
+    echo "spatialdb has been created with postgis extension"
+
+    # library path needed for Fedora / postgresql
+    qube_append_file $_vmname "user" \
+        "/home/user/.bashrc" \
+        "export LD_LIBRARY_PATH=\\\"/usr/lib64\\\"" 
+}
+
+
+function config_networking () {
+    # allow desktop vm to access server vm
+    declare _firewall=$1
+    declare _desktopvm=$2
+    declare _servervm=$3
+    declare _ipchain
+    declare _commands
+    notify 2 "Config_networking: $_firewall $_desktopvm $_servervm"
+
+    declare _desktopip=$(qube_get_ip $_desktopvm)
+    declare _serverip=$(qube_get_ip $_servervm)
+
+    notify 1 "AppVMs have the following IPs:"
+    notify 1 "  Desktop IP: $_desktopip"
+    notify 1 "  Server IP: $_serverip"
+    
+    # ensure server accepts requests from desktop
+    _ipchain="iptables -I INPUT -s $_desktopip -j ACCEPT"
+    _commands=$(cat <<EOF
+        $_ipchain
+        echo "sudo $_ipchain" >> /rw/config/rc.local
+EOF
+    )
+    qube_run_commands $_servervm "root" "$_commands"
+
+    # ensure firewall forwards requests from desktop to server
+    _ipchain="iptables -I FORWARD 2 -s $_desktopip -d $_serverip -j ACCEPT"
+    _commands=$(cat <<EOF
+        $_ipchain
+        echo "sudo $_ipchain" >> /rw/config/qubes-firewall-user-script
+EOF
+    )
+    qube_run_commands $_firewall "root" "$_commands"
+
+
+    # add hostname of server to desktop so don't have to remember IP
+    qvm-run $__qvm_run_options -u root $_desktopvm \
+        "echo $_serverip $_servervm >> /etc/hosts"
+    qube_append_file $_desktopvm root \
+        "/rw/config/rc.local" \
+        "echo $_serverip $_servervm >> /etc/hosts" 
+}
+
+
+function main_create_gis_qubes () {
+    declare _ostype
+    declare _osversion
+
+    echo "Creating Qubes GIS"
+
+    # Create GIS template
+    notify 1 "Creating GIS template: $_GISTEMPLATEVM"
+    qvm-clone $_MASTERTEMPLATE $_GISTEMPLATEVM
+    qvm-prefs $_GISTEMPLATEVM netvm sys-firewall  # network required to install non-standard pacakges
+
+    # get os type and version - these could just be added manually if known
+    # version is only needed for Debian, when adding repositories
+    _ostype=$(qube_get_ostype $_GISTEMPLATEVM )
+    _osversion=$(qube_get_osversion $_GISTEMPLATEVM )
+    notify 2 "Created GIS template: $_GISTEMPLATEVM ($_ostype / $_osversion)"
+
+    case $_ostype in
+        "Debian")
+            _GISSOFTWARE="$_GISSOFTWARE$_GISSOFTWARE_DEBIAN"
+            ;;
+        "Fedora")
+            _GISSOFTWARE="$_GISSOFTWARE$_GISSOFTWARE_FEDORA"
+            ;;
+        *)
+            notify 0 "ERROR - unknown OS type: $_ostype"
+            exit 1
+            ;;
+    esac
+
+    qube_update_vm $_GISTEMPLATEVM
+    add_gis_repos $_GISTEMPLATEVM
+    qube_install_software $_GISTEMPLATEVM $_GISSOFTWARE
+    configure_postgres $_GISTEMPLATEVM
+    install_geoserver $_GISTEMPLATEVM $_GEOSERVERURL
+
+    qvm-prefs $_GISTEMPLATEVM netvm ''
+    qube_wait_shutdown $_GISTEMPLATEVM 
+
+    # create gis desktop
+    notify 1 "Creating GIS Desktop: $_GISDESKTOPVM"
+    qvm-create --class AppVM \
+        --template $_GISTEMPLATEVM \
+        --label yellow \
+        --prop=maxmem=8192 \
+        --prop=memory=1024 \
+        $_GISDESKTOPVM
+    qvm-volume extend $_GISDESKTOPVM:private 20480mb
+    configure_gis_desktop $_GISDESKTOPVM
+
+    # create gis server
+    notify 1 "Creating GIS Server: $_GISSERVERVM"
+    qvm-create --class AppVM \
+        --template $_GISTEMPLATEVM \
+        --label yellow \
+        --prop=maxmem=8192 \
+        --prop=memory=1024 \
+        $_GISSERVERVM
+    qvm-volume extend $_GISSERVERVM:private 20480mb
+    configure_gis_server $_GISSERVERVM $_ostype
+
+    config_networking sys-firewall $_GISDESKTOPVM $_GISSERVERVM
+
+    echo -e "\nAppVMs '$_GISDESKTOPVM' and '$_GISSERVERVM' have been created."
+    echo "To access the GIS server from the desktop use it's hostname: $_GISSERVERVM"
+    echo "For example, to access GeoServer's admin panel use:"
+    echo "     http://$_GISSERVERVM:8080/geoserver"
+    echo
+    echo "The database 'spatialdb' has also been created. The user is 'spatialadmin',"
+    echo "and the password is what you entered earlier during setup."
+    echo
+    echo "done."
+}
+
+
+main_create_gis_qubes
+
+
+
+

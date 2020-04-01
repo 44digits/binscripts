@@ -1,0 +1,74 @@
+#!/bin/bash
+
+DEBUG=1
+
+declare _VAULTVM=fin
+declare _DVM=plus-dvm
+declare _S3SCRIPT=$(basename "$0")
+declare _LOCALS3SCRIPT="/home/user/QubesIncoming/dom0/$S3SCRIPT"
+declare _TARLIST=".s3cfg .vault/"
+
+declare _S3=
+source $(dirname "$0")/secrets
+
+
+function dom0_run {
+    declare _DISPOSABLELIST01=$(qvm-ls --raw-list | grep disp)
+    qvm-run --dispvm=$_DVM xterm &
+    qvm-start --skip-if-running $_VAULTVM
+
+    sleep 30
+
+    declare _DISPOSABLELIST02=$(qvm-ls --raw-list | grep disp)
+    declare _NEWDVM=$(comm -13 \
+        <(echo $_DISPOSABLELIST01 | tr ' ' '\n') \
+        <(echo $_DISPOSABLELIST02 | tr ' ' '\n'))
+    
+    echo "Copy to :$_NEWDVM"
+    qvm-copy-to-vm $_VAULTVM $_S3SCRIPT
+    qvm-run -p $_VAULTVM "bash $_LOCALS3SCRIPT fin"
+    qvm-run -p $_VAULTVM "rm -f $_LOCALS3SCRIPT"
+
+    qvm-copy-to-vm $_NEWDVM $_S3SCRIPT
+    qvm-copy-to-vm $_NEWDVM $(dirname "$0")/secrets
+    qvm-run -p $_NEWDVM "bash $_LOCALS3SCRIPT upload"
+
+    echo "Completed..."
+    read X
+    qvm-kill -v $_NEWDVM
+}
+
+
+function fin_run  {
+    qvm-copy $_TARLIST
+}
+
+
+
+function dvm_run {
+    source $(dirname "$0")/secrets
+
+    mv /home/user/QubesIncoming/fin/.vault ~/
+    mv /home/user/QubesIncoming/fin/.s3cfg ~/
+    rm /home/user/.vault/*.conf
+    s3cmd -r --delete-removed sync /home/user/.vault/ $_S3
+}
+
+
+
+case $1 in 
+    fin)
+        echo "s3vault - fin"
+        fin_run
+        ;;
+    upload)
+        echo "s3vault - upload"
+        dvm_run
+        ;;
+    *)
+        echo "s3vault - dom0"
+        dom0_run 
+        ;;
+esac
+
+

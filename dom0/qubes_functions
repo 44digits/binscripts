@@ -1,0 +1,230 @@
+#!/bin/bash
+
+# qubes_functions
+#
+# Helper functions to assist qubes administration scripts
+# to be run in dom0
+#
+# Date: 2019.09.18
+#
+
+__qvm_run_options="${__qvm_run_options:-"-p --color-stderr=37"}"
+__notifylevel="${__notifylevel:-2}"
+
+
+
+function notify () {
+    declare _level=$1
+    if [[ "$__notifylevel" -ge "$_level" ]]; then
+        cat <<< "${@:2}" 1>&2
+    fi
+}
+
+
+function zenity_fix () {
+    zenity "$@" 2>/dev/null
+}
+
+
+function qube_get_state () {
+    declare _vm=$1
+    declare _state
+
+    _state=$(qvm-ls -n --fields=STATE,NAME \
+        | grep -m 1 "$_vm" \
+        | cut -d' ' -f 1)
+
+    notify 2 "qube_get_state: $_vm $_state"
+    echo $_state
+}
+
+
+function qube_get_ip () {
+    declare _vm=$1
+    declare _ip
+
+    _ip=$(qvm-ls -n --fields=IP,NAME \
+        | grep -m 1 "$_vm" \
+        | cut -d' ' -f 1)
+
+    notify 2 "qube_get_ip: $_vm $_ip"
+    echo $_ip
+}
+
+
+function qube_wait_shutdown () {
+    declare _vm=$1
+
+    qvm-shutdown $_vm
+    while [[ "$(qube_get_state $_vm)" != "Halted" ]]; do 
+        sleep 3 
+    done
+    notify 2 "qube_wait_shutdown: $_vm halted"
+}
+
+
+function qube_run_commands () {
+    declare _vm=$1
+    declare _user=$2
+    declare _commands="${@:3}"
+    declare _cmd
+
+    if [[ -z "$_user" ]]; then _user="user"; fi
+
+    notify 2 "qube_run_commands: VM:$_vm user:$_user"
+
+    while read -r _cmd <&3; do
+        notify 2 "qube_run_commands: --$_cmd--"
+        qvm-run $__qvm_run_options -u "$_user" "$_vm" "$_cmd"
+    done 3<<< "$_commands"
+}
+
+
+function qube_write_file () {
+    declare _vm=$1
+    declare _user=$2
+    declare _file=$3
+    declare _lines="${@:4}"
+    declare _line
+
+    notify 2 "qube_write_file: VM:$_vm user:$_user file:$_file"
+
+    qvm-run $__qvm_run_options -u "$_user" "$_vm" "echo > $_file"
+    qube_append_file $_vm $_user $_file "$_lines"
+}
+
+
+function qube_append_file () {
+    declare _vm=$1
+    declare _user=$2
+    declare _file=$3
+    declare _lines="${@:4}"
+    declare _line
+
+    notify 2 "qube_append_file: VM:$_vm user:$_user file:$_file"
+
+    while read -r _line <&3; do
+        notify 2 "qube_append_file: --$_line--"
+        qvm-run $__qvm_run_options -u "$_user" "$_vm" "echo $_line >> $_file"
+    done 3<<< "$_lines"
+}
+
+
+function qube_update () {
+    declare _vm=$1
+    declare _ostype=$2
+    declare _cmd
+    notify 2 "qube_update: vm:$_vm ($_ostype)"
+
+    case $_ostype in
+        "Debian")
+            _commands=$(cat <<EOF
+                apt-get -y update
+                apt-get -y upgrade
+                apt-get -y dist-upgrade
+                apt-get -y clean
+                apt-get -y remove
+                apt-get -y autoremove
+EOF
+            )
+            ;;
+        "Fedora")
+            _commands=$(cat <<EOF
+                dnf upgrade -y
+                dnf clean all
+EOF
+            )
+            ;;
+        *)
+            notify 0 "ERROR: qube_update: unknown OStype:$_ostype"
+            exit 1
+    esac
+    qube_run_commands $_vm "root" "$_commands"
+}
+
+
+function qube_install_software () {
+    declare _vm=$1
+    declare _ostype=$2
+    declare _software=$3
+    notify 2 "qube_install_software: vm:$_vm ostype:$_ostype software:$_software"
+
+    # software list delineated by '&'
+    declare _softwarelist=$(echo $_software | tr '&' ' ')
+
+    case $_ostype in
+        "Debian")
+            declare _install="apt-get -y install $_softwarelist"
+            ;;
+        "Fedora")
+            declare _install="dnf install -y $_softwarelist"
+            ;;
+        *)
+            notify 0 "ERROR: qube_install_software: unknown OStype:$_ostype"
+            exit 1
+    esac
+
+    qube_run_commands $_vm "root" "$_install"
+}
+
+
+
+function disk_busy () {
+    # check if hard disk is under load
+    #   return 1 or 0
+    declare _diskthreshold=10000
+    declare _sum_diff
+    declare _diff_data=()
+    declare _raw_disk_data
+    declare _diskdata1
+    declare _diskdata2
+
+    _raw_disk_data=$(cat /proc/diskstats \
+        | grep "sda " \
+        | tr -s ' ' \
+        | cut -d' ' -f 5-19 )
+    _diskdata1=($_raw_disk_data)
+
+    sleep 1
+
+    _raw_disk_data=$(cat /proc/diskstats \
+        | grep "sda " \
+        | tr -s ' ' \
+        | cut -d' ' -f 5-19 )
+    _diskdata2=($_raw_disk_data)
+
+    for i in ${!_diskdata2[@]}; do
+        _diff_data+=( $(( ${_diskdata2[$i]} - ${_diskdata1[$i]} )) )
+    done
+
+    _sum_diff=$(IFS=+; echo "$((${_diff_data[*]}))")
+
+    if [[ $_sum_diff -gt $_diskthreshold ]]; then
+        echo 1  # disk busy
+    else
+        echo 0  # disk not busy
+    fi
+}
+
+
+function wait_disk_ready () {
+    # return when hard disk is no longer under load
+    declare _seconds
+    declare _DISKCHECKS=0
+
+    while true; do 
+        _DISKCHECKS=0
+
+        for i in {1..4}; do 
+            _seconds=$(awk 'BEGIN{srand(); print rand() *2 }')
+            sleep $_seconds
+            _DISKCHECKS=$(( $_DISKCHECKS + $(disk_busy) ))
+        done 
+
+        if [[ $_DISKCHECKS -eq 0 ]]; then
+            break
+        fi
+    done
+}
+
+ 

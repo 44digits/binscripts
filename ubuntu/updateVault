@@ -1,0 +1,17 @@
+#!/bin/bash
+
+source $(dirname "$0")/secrets
+
+echo -e "\nUpdate Vault ???"
+read X
+
+if [ "$X" == "Y" ]; then
+	s3cmd -r \
+        --delete-removed \
+        sync \
+        $S3BUCKET \
+        $VAULT
+fi
+
+
+

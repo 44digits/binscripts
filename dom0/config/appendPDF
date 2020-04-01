@@ -1,0 +1,44 @@
+#!/bin/bash
+
+
+function print_usage () {
+    echo "Usage:"
+    echo "appendPDF A.pdf B.pdf"
+    echo "  appends A.pdf and B.pdf, with the name _B.pdf"
+}
+
+
+
+function main () {
+    declare _newpdf="$1"
+    declare _oldpdf="$2"
+
+    if [[ -z "$_newpdf" || -z "$_oldpdf" ]]; then
+        print_usage 
+        exit 1
+    fi
+    
+    declare _combinedpdf="_$2"
+    echo "Append PDF"
+    pdftk "$1" "$2" cat output "$_combinedpdf"
+    if [[ "$?" -ne 0 ]]; then exit $? ; fi
+
+    evince "$_combinedpdf"
+
+    declare _c
+    read -p "... delete inputs? (y/N)" _c
+    echo "--read:$_c"
+    if [[ "$_c" != "y" ]]; then
+        echo "... not deleted"
+    else
+        rm "$1" "$2"
+        mv "$_combinedpdf" "$2"
+    fi
+
+    echo "... done"
+}
+
+main "$1" "$2"
+
+
+

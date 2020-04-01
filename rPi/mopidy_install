@@ -1,0 +1,148 @@
+#!/bin/bash
+#
+# mopidy_install
+# perform a "source" installation of mopidy on raspian
+# 
+# commands adapted from documentation at:
+# https://docs.mopidy.com/en/latest/installation/source/
+#
+# Date: 2019.09.01
+# Author: aross
+
+echo -e "Installing mopidy\n"
+
+# Check python version:
+REQUIREDPYTHONVERSION="2.7"
+CURRENTPYTHONVERSION=$(python --version 2>&1 | cut -d' ' -f2 | cut -d'.' -f1-2)
+
+
+if (( $(awk -v cur="$CURRENTPYTHONVERSION" -v req="$REQUIREDPYTHONVERSION" 'BEGIN {print (cur>=req) ? "1" : "0" }') )); then
+    echo "Python version OK: $CURRENTPYTHONVERSION"
+else
+    echo "ERROR: Python version not sufficient: $CURRENTPYTHONVERSION"
+    echo "  mopidy requires $REQUIREDPYTHONVERSION"
+    exit 1
+fi
+
+
+# Install debian packages
+echo -e "\n"
+echo "Installing debian packages..."
+
+sudo apt-get install \
+    build-essential \
+    python-dev \
+    python-gst-1.0 \
+    python-pip \
+    gir1.2-gst-plugins-base-1.0 \
+    gir1.2-gstreamer-1.0 \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-ugly \
+    gstreamer1.0-tools \
+    sqlite3 \
+    youtube-dl 
+
+
+# Install python packages
+echo -e "\n"
+echo "Installing python packages..."
+
+sudo pip install -U mopidy \
+    Mopidy-Iris \
+    Mopidy-Local-Images \
+    Mopidy-Local-SQLite \
+    Mopidy-YouTube \
+    youtube-dl 
+
+
+# Mopidy config
+echo -e "\n"
+echo "Configuring Mopidy..."
+
+mkdir -p ~/.local/share/mopidy/m3u/
+
+cat <<- EOF > ~/.local/share/mopidy/m3u/InternetRadio.m3u
+#EXTM3U
+#EXTINF:0,ClassicFM
+http://media-sov.musicradio.com:80/ClassicFMMP3
+EOF
+
+cat <<- EOF > ~/.local/share/mopidy/m3u/npr.m3u
+#EXTM3U
+#EXTINF:0,KPBS Radio
+#EXTVLCOPT:network-caching=1000
+http://kpbs.streamguys1.com/kpbs-mp3
+#EXTINF:0,KPBS Classical
+#EXTVLCOPT:network-caching=1000
+http://kpbs-classical.streamguys1.com/kpbs-classical
+#EXTINF:0,CapRadio News
+#EXTVLCOPT:network-caching=1000
+http://playerservices.streamtheworld.com/api/livestream-redirect/KXJZ.mp3
+#EXTINF:0,CapRadio Music
+#EXTVLCOPT:network-caching=1000
+http://playerservices.streamtheworld.com/api/livestream-redirect/KXPR.mp3
+#EXTINF:0,CapRadio Classical
+#EXTVLCOPT:network-caching=1000
+http://playerservices.streamtheworld.com/api/livestream-redirect/ClassicalStream.mp3
+EOF
+
+mkdir -p ~/.config/mopidy/
+cat <<- EOF > ~/.config/mopidy/mopidy.conf
+# mopidy.conf
+#
+# For further information about options in this file see:
+#   http://docs.mopidy.com/
+
+[audio]
+output = alsasink
+
+[mpd]
+enabled = true
+hostname = ::
+port = 6600
+
+[http]
+enabled = true
+hostname = ::
+port = 6680
+
+[stream]
+enabled = true
+protocols = 
+  http
+  https
+  mms 
+  rtmp
+  rtmps
+  rtsp
+
+[m3u]
+enabled = true
+default_extension = .m3u
+
+[file]
+enabled = false
+
+[local]
+enabled = true
+library = images
+media_dir = /mnt/media/music/
+
+[local-images]
+library = sqlite
+
+EOF
+
+# enable auto starting after desktop is ready and pulseaudio is running
+#   probably should create a service... 
+
+if [[ $(grep -i 'mopidy' /etc/xdg/lxsession/LXDE-pi/autostart) ]]; then 
+    echo "ERROR: /etc/xdg/lxsession/LXDE-pi/autostart already contains modipy entry"
+else
+    sudo echo "@$(which mopidy)" >> /etc/xdg/lxsession/LXDE-pi/autostart
+
+fi
+
+
+echo -e "\nDone...\n"
