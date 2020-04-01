@@ -25,8 +25,15 @@ function main () {
 
     evince "$_combinedpdf"
 
-    rm -i "$1" "$2"
-    mv "$_combinedpdf" "$2"
+    declare _c
+    read -p "... delete inputs? (y/N)" _c
+    echo "--read:$_c"
+    if [[ "$_c" != "y" ]]; then
+        echo "... not deleted"
+    else
+        rm "$1" "$2"
+        mv "$_combinedpdf" "$2"
+    fi
 
     echo "... done"
 }
