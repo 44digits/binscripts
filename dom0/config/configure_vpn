@@ -1,0 +1,116 @@
+#!/bin/bash
+#
+# configure vpn
+# see: https://www.qubes-os.org/doc/vpn/
+#
+# 2019.05.14
+
+
+function make_ovpn() {
+    mv vpn.ovpn /rw/config/vpn/openvpn-client.ovpn
+}
+
+
+function make_vpn_handler() {
+
+    cat <<EOF >/rw/config/vpn/qubes-vpn-handler.sh
+#!/bin/bash
+set -e
+export PATH="\$PATH:/usr/sbin:/sbin"
+export vpn_dns="8.8.8.8 8.8.4.4"
+  
+case "\$1" in
+  
+up)
+# To override DHCP DNS, assign DNS addresses to 'vpn_dns' env variable before calling this script;
+# Format is 'X.X.X.X  Y.Y.Y.Y [...]'
+if [[ -z "\$vpn_dns" ]] ; then
+    # Parses DHCP foreign_option_* vars to automatically set DNS address translation:
+    for optionname in \${!foreign_option_*} ; do
+        option="\${!optionname}"
+        unset fops; fops=(\$option)
+        if [ \${fops[1]} == "DNS" ] ; then vpn_dns="\$vpn_dns \${fops[2]}" ; fi
+    done
+fi
+  
+iptables -t nat -F PR-QBS
+if [[ -n "\$vpn_dns" ]] ; then
+    # Set DNS address translation in firewall:
+    for addr in \$vpn_dns; do
+        iptables -t nat -A PR-QBS -i vif+ -p udp --dport 53 -j DNAT --to \$addr
+        iptables -t nat -A PR-QBS -i vif+ -p tcp --dport 53 -j DNAT --to \$addr
+    done
+    su - -c 'notify-send "\$(hostname): LINK IS UP." --icon=network-idle' user
+else
+    su - -c 'notify-send "\$(hostname): LINK UP, NO DNS!" --icon=dialog-error' user
+fi
+  
+;;
+down)
+su - -c 'notify-send "\$(hostname): LINK IS DOWN !" --icon=dialog-error' user
+;;
+esac
+
+
+
+EOF
+
+    chmod +x /rw/config/vpn/qubes-vpn-handler.sh
+}
+
+
+function make_firewall() {
+    cat <<EOF >/rw/config/qubes-firewall-user-script
+#!/bin/bash
+#    Block forwarding of connections through upstream network device
+#    (in case the vpn tunnel breaks):
+iptables -I FORWARD -o eth0 -j DROP
+iptables -I FORWARD -i eth0 -j DROP
+ip6tables -I FORWARD -o eth0 -j DROP
+ip6tables -I FORWARD -i eth0 -j DROP
+   
+#    Block all outgoing traffic
+iptables -P OUTPUT DROP
+iptables -F OUTPUT
+iptables -I OUTPUT -o lo -j ACCEPT
+   
+#    Add the qvpn group to system, if it doesn't already exist
+if ! grep -q "^qvpn:" /etc/group ; then
+     groupadd -rf qvpn
+     sync
+fi
+sleep 2s
+   
+#    Allow traffic from the qvpn group to the uplink interface (eth0);
+#    Our VPN client will run with group qvpn.
+iptables -I OUTPUT -p all -o eth0 -m owner --gid-owner qvpn -j ACCEPT
+
+EOF
+    
+    chmod +x /rw/config/qubes-firewall-user-script
+}
+
+
+function make_rclocal() {
+    cat <<EOF >/rw/config/rc.local
+#!/bin/bash
+VPN_CLIENT='openvpn'
+VPN_OPTIONS='--cd /rw/config/vpn/ --config openvpn-client.ovpn --daemon'
+   
+su - -c 'notify-send "\$(hostname): Starting \$VPN_CLIENT..." --icon=network-idle' user
+groupadd -rf qvpn ; sleep 2s
+sg qvpn -c "\$VPN_CLIENT \$VPN_OPTIONS"
+
+EOF
+    
+    chmod +x /rw/config/rc.local
+}
+
+
+mkdir -p /rw/config/vpn
+make_ovpn
+make_vpn_handler
+make_firewall
+make_rclocal
+
+
