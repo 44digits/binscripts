@@ -16,3 +16,11 @@ echo -e "\n\nalias rm='rm -i'" >> ~/.bashrc
 
 # browser.newtabpage.activity-stream.enabled -> FALSE
 # browser.disableResetPrompt -> TRUE
+# datareporting.policy.firstRunURL
+# datareporting.healthreport.uploadEnabled
+
+https://support.mozilla.org/en-US/kb/customizing-firefox-using-autoconfig
+https://developer.mozilla.org/en-US/docs/Mozilla/Firefox/Enterprise_deployment_before_60
+https://wiki.mozilla.org/Privacy/Privacy_Task_Force/firefox_about_config_privacy_tweeks
+https://gist.github.com/0XDE57/fbd302cef7693e62c769
+
