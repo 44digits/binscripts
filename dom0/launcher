@@ -119,6 +119,7 @@ function firefox_plugins () {
     declare _urls=$(tr -s [:space:] ' ' <<EOF
         https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/
         https://addons.mozilla.org/en-US/firefox/addon/privacy-badger17/
+        https://addons.mozilla.org/en-US/firefox/addon/printable-the-print-doctor/
 EOF
     )
     qvm_firefox $__DVM $_urls
