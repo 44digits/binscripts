@@ -135,7 +135,7 @@ function firefox_work () {
         https://trello.com/login
         https://stackoverflow.com/users/login
         https://datascience4sd.slack.com
-        https://opensandiego.slack.com/) 
+        https://opensandiego.slack.com/
         https://crisismapperscovid-19.slack.com/
 EOF
     )
