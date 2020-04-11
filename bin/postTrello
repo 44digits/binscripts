@@ -1,0 +1,48 @@
+#!/bin/bash
+
+declare _url='https://api.trello.com/1/cards'
+declare _listid
+declare _trellokey
+declare _trellotoken
+
+# import: 
+#     _listid
+#     _trellokey
+#     _trellotoken
+source $(dirname "$0")/secrets
+
+
+function main () {
+    declare _jobtitle=$1
+    declare _company=$2
+    declare _cardname="$1 - $2"
+    declare _carddesc=$3
+    declare _postdata
+
+    _postdata=$(tr -d [:space:] <<EOF
+        name=$(urlencode $_cardname)&
+        desc=$(urlencode $_carddesc)&
+        idList=$_listid&
+        key=$_trellokey&
+        token=$_trellotoken
+EOF
+    )
+
+    wget \
+        --no-cache \
+        -O /dev/null \
+        --post-data=$_postdata \
+        "$_url" 
+}
+
+
+if [ $# -ne 3 ]; then
+    echo "Usage is: $0: \"Job\" "Company" \"url\""
+    echo "For example: $0 \"Big job\" \"Company\" \"http://company.com/job\""
+    exit 1
+else
+    main "$1" "$2" "$3"
+fi
+
+
+
