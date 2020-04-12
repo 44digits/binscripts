@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# postTrelloJob
+#
+# Create a new card in Trello with the given
+# Job title, company, and url as the description
+#
+# 2020.04.11
+
+
 declare _url='https://api.trello.com/1/cards'
 declare _listid
 declare _trellokey
