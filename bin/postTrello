@@ -12,6 +12,22 @@ declare _trellotoken
 source $(dirname "$0")/secrets
 
 
+urlencode() {
+    declare _string="$@"
+    declare _length="${#_string}"
+    declare _i
+    declare _c
+
+    for (( _i = 0; _i < _length; _i++ )); do
+        _c="${_string:_i:1}"
+        case $_c in
+            [a-zA-Z0-9.+~_-]) printf "$_c" ;;
+            *) printf '%%%02X' "'$_c" ;;
+        esac
+    done
+}
+
+
 function main () {
     declare _jobtitle=$1
     declare _company=$2
