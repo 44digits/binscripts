@@ -1,0 +1,164 @@
+#!/bin/bash
+
+#####################################################################
+# go_install
+#
+# install latest golang 
+#
+# Date: 2020.04.14
+#
+#####################################################################
+
+
+
+#####################################################################
+# globals
+#
+
+
+declare _GOURL="https://dl.google.com/go/go1.14.2.linux-amd64.tar.gz"
+declare __notifylevel=2
+
+
+
+function notify () {
+    # centralized function to notify/echo messages currently sent for STDERR on 2
+    # _level is arbitrary - but generally:
+    #       0 - run error, program will exit
+    #       1 - general info
+    #       2 - more detail, debugging info
+    declare _level=$1
+    declare _msg=${@:2}
+
+    if [[ "$__notifylevel" -ge "$_level" ]]; then
+        cat <<< "$_msg" 1>&2
+    fi
+}
+
+
+
+function print_help() {
+    echo "Usage: $0 [-g | -b] "
+    echo "  where g: install go, b: update bashrc, no arguement: all actions"
+}
+
+
+
+function check_url () {
+    declare _url=$1
+    declare _status
+
+    if [[ $(wget --spider $_url 2>&1 | grep "broken") ]]; then 
+        _status="broken"
+    else
+        _status=0
+    fi
+
+    notify 2 "check_url: $_status"
+    echo $_status
+}
+
+
+
+function get_osversion () {
+    declare _osversion=$(lsb_release -a 2>/dev/null \
+        | grep -i "codename" \
+        | cut -f 2)
+    echo $_osversion
+}
+
+
+
+function update_bashrc () {
+    # update PATH for /usr/local/go/bin
+    declare _bashrc="$HOME/.bashrc"
+
+    cat <<EOT >> $_bashrc
+
+# GO
+PATH=$PATH:/usr/local/go/bin
+
+EOT
+}
+
+
+
+function check_alreadyinstalled () {
+    declare _godir="/usr/local/go"
+
+    if [ -d "$_godir" ]; then
+        notify 0 "ERROR: go already installed at $_godir - delete before installing"
+        exit 1
+    fi
+}
+
+
+
+function install_go () {
+    declare __arc=$(basename $_GOURL)
+    declare __tmpdir="/tmp/$(basename -s .tar.xz $_GOURL)"
+    declare __asc
+    declare __dummy
+    declare __filesha256
+    declare __sha256
+
+    notify 1 "Installing go from $_GOURL"
+    if [[ $(check_url $_GOURL) -ne 0 ]]; then
+        notify 0 "ERROR: unable to access geoserver url: $_GOURL"
+        exit 1
+    fi
+
+    wget -c -P /tmp $_GOURL
+
+    # check integrity/security
+    # imported signing key with:
+    #    wget -O - https://keybase.io/ambv/pgp_keys.asc | gpg --import
+
+    echo
+    read -p "Enter sha256 signature for Python archive: " __sha256
+    md5sum "/tmp/$__arc"
+    __filesha256=$(sha256sum "/tmp/$__arc" | cut -d' ' -f 1)
+    if [[ "$__filesha256" == "$__sha256" ]]; then 
+        echo "SHA256 matches"
+    else
+        echo "SHA256 does not match"
+    fi
+    read -p "Continue? " __dummy
+
+    sudo tar -C /usr/local -xvzf "/tmp/$__arc"
+
+    notify 1 ""
+    notify 1 "GO installed" 
+}
+
+
+
+#####################################################################
+# main
+#
+
+
+if [[ $# -eq 0 ]]; then
+    # no arguements
+    check_alreadyinstalled
+    install_go 
+
+else
+    declare _options
+
+    getopts "bg" _options
+    case $_options in
+        g)  # install go
+            check_alreadyinstalled
+            install_go 
+            ;;
+        b)  # update PATH for /usr/local/go/bin
+            update_bashrc 
+            ;;
+        *)
+            print_help
+            exit 1
+            ;;
+    esac
+fi
+
