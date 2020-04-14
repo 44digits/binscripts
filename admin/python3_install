@@ -4,6 +4,8 @@
 # python3_install
 #
 # install latest python3 
+#    using: sudo make -C $__pydir altinstall 
+#    to install in /usr/local/bin/
 #
 # Date: 2020.04.14
 #
@@ -11,35 +13,44 @@
 
 
 
+#####################################################################
+# globals
+#
+
+
 declare __DEVELOPMENTSOFTWARE=$(tr -s [:space:] '&' <<EOF
     build-essential
     checkinstall
-    git
+    libbz2-dev
     libbz2-dev 
     libc6-dev 
+    libdb5.3-dev
+    libexpat1-dev
     libffi-dev
     libgdbm-dev
+    liblzma-dev
     libncurses5-dev
     libncursesw5-dev
     libnss3-dev
     libreadline-gplv2-dev 
-    libsqlite3-dev 
+    libsqlite3-dev
+    libsqlite3-dev
     libssl-dev
-    nodejs
-    npm
     python3-dev
     python3-pip
     python3-venv
     tk-dev 
+    uuid-dev
     zlib1g-dev
 EOF
 )
 
 
-$declare _PYTHONURL="https://www.python.org/ftp/python/3.8.1/Python-3.8.1.tar.xz"
+#declare _PYTHONURL="https://www.python.org/ftp/python/3.8.1/Python-3.8.1.tar.xz"
 declare _PYTHONURL="https://www.python.org/ftp/python/3.8.2/Python-3.8.2.tar.xz"
-
 declare __notifylevel=2
+
+
 
 function notify () {
     # centralized function to notify/echo messages currently sent for STDERR on 2
@@ -56,10 +67,12 @@ function notify () {
 }
 
 
+
 function print_help() {
-    echo "Usage: $0 [-s | -p] "
-    echo "  where p: instal python, s: update system, no arguement: both actions"
+    echo "Usage: $0 [-s | -p | -b] "
+    echo "  where p: instal python, s: update system, b: update bashrc, no arguement: all actions"
 }
+
 
 
 function check_url () {
@@ -77,12 +90,14 @@ function check_url () {
 }
 
 
+
 function get_osversion () {
     declare _osversion=$(lsb_release -a 2>/dev/null \
         | grep -i "codename" \
         | cut -f 2)
     echo $_osversion
 }
+
 
 
 function update_system () {
@@ -97,6 +112,7 @@ function update_system () {
 }
 
 
+
 function install_software () {
     declare _software=$1
     # software list delineated by '&'
@@ -106,6 +122,28 @@ function install_software () {
 
     sudo apt-get -y install $_softwarelist
 }
+
+
+
+function update_bashrc () {
+    declare _file="$HOME/.bashrc"
+    declare _pythonbin=$( echo $_PYTHONURL \
+        | sed "s/.*Python-\([0-9]\+\.[0-9]\+\)\.[0-9]\+.tar.xz/python\1/" \
+        )
+
+    notify 1 "update_bashrc: python bin:$_pythonbin"
+
+    cat <<EOT >> $_file
+
+# python aliases
+
+alias rm="rm -i"
+alias pvc="$_pythonbin -m venv venv"
+alias pva="source ./venv/bin/activate"
+
+EOT
+}
+
 
 
 function install_python3 () {
@@ -156,19 +194,37 @@ function install_python3 () {
 
 
 
-getopts "sp" OPTION
-case $OPTION in
-    s)  # update system
-        update_system
-        install_software $__DEVELOPMENTSOFTWARE
-        ;;
-    p)  # install python3
-        install_python3 
-        ;;
-    *)
-        print_help
-        exit 1
-        ;;
-esac
+#####################################################################
+# main
+#
 
+
+if [[ $# -eq 0 ]]; then
+    # no arguements
+    update_system
+    install_software $__DEVELOPMENTSOFTWARE
+    install_python3 
+    update_bashrc 
+
+else
+    declare _options
+
+    getopts "bsp" _options
+    case $_options in
+        s)  # update system
+            update_system
+            install_software $__DEVELOPMENTSOFTWARE
+            ;;
+        p)  # install python3
+            install_python3 
+            ;;
+        b)  # add venv commands to bashrc
+            update_bashrc 
+            ;;
+        *)
+            print_help
+            exit 1
+            ;;
+    esac
+fi
 
