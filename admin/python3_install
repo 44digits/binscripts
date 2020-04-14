@@ -1,62 +1,15 @@
 #!/bin/bash
 
 #####################################################################
-# ubuntu_setup
+# python3_install
 #
-# bash script to automate the initial setup of an ubuntu system
+# install latest python3 
 #
-# Date: 2019.12.06
+# Date: 2020.04.14
 #
 #####################################################################
 
 
-declare __STANDARDSOFTWARE=$(tr -s [:space:] '&' <<EOF
-    audacity
-    calibre
-    ccrypt
-    chromium-browser
-    cryptsetup
-    ecryptfs-utils 
-    evince
-    gimp
-    gnome-shell-extensions
-    gnome-tweak-tool
-    gnucash
-    gocryptfs
-    inkscape
-    jmtpfs
-    kodi
-    lame
-    libavcodec-extra
-    libdbd-sqlite3
-    liblzma-dev
-    libreoffice
-    lzip
-    pdfshuffler
-    s3cmd
-    screen
-    scrypt
-    sqlite3
-    tmux
-    ubuntu-restricted-extras
-    vim
-    virtualbox
-    vlc
-    wget
-    xournal
-    xsane
-    xterm
-EOF
-)
-
-declare __GISSOFTWARE=$(tr -s [:space:] '&' <<EOF
-	gdal-bin
-	gpsbabel
-	qgis
-	spatialite-bin
-	spatialite-gui
-EOF
-)
 
 declare __DEVELOPMENTSOFTWARE=$(tr -s [:space:] '&' <<EOF
     build-essential
@@ -82,19 +35,11 @@ declare __DEVELOPMENTSOFTWARE=$(tr -s [:space:] '&' <<EOF
 EOF
 )
 
-declare __SNAPS=$(tr -s [:space:] '&' <<EOF
-	pdftk
-EOF
-)
 
+$declare _PYTHONURL="https://www.python.org/ftp/python/3.8.1/Python-3.8.1.tar.xz"
+declare _PYTHONURL="https://www.python.org/ftp/python/3.8.2/Python-3.8.2.tar.xz"
 
-declare _SOFTWARELIST="$__STANDARDSOFTWARE$__GISSOFTWARE$__DEVELOPMENTSOFTWARE"
-#declare _PYTHONURL="https://www.python.org/ftp/python/3.8.0/Python-3.8.0.tar.xz"
-declare _PYTHONURL="https://www.python.org/ftp/python/3.8.1/Python-3.8.1.tar.xz"
-declare _BACKUPFOLDER="$HOME/bak"
-declare _CONFIGFOLDER=$(dirname "$0")
-
-__notifylevel=2
+declare __notifylevel=2
 
 function notify () {
     # centralized function to notify/echo messages currently sent for STDERR on 2
@@ -112,8 +57,8 @@ function notify () {
 
 
 function print_help() {
-    echo "Usage: ubuntu_setup (-a | -i | -s | -u)"
-    echo "  where a: all, i: install software, s: config system, u: config user"
+    echo "Usage: $0 [-s | -p] "
+    echo "  where p: instal python, s: update system, no arguement: both actions"
 }
 
 
@@ -129,36 +74,6 @@ function check_url () {
 
     notify 2 "check_url: $_status"
     echo $_status
-}
-
-
-function backup_file () {
-    declare _filewithpath
-    eval _filewithpath=$1
-    #declare _file=$(basename $_filewithpath | tr '.' '_' )
-    declare _file=$(basename $_filewithpath | sed -e 's/^\./_/')
-    declare _now=$(date +%Y%m%d%H%M%S)
-    declare __backupfolder
-
-    notify 2 "backup_file: filewithpath:$_filewithpath, file:$_file, now:$_now"
-    
-    eval __backupfolder=$_BACKUPFOLDER
-    mkdir -p $__backupfolder
-    cp $_filewithpath "$__backupfolder/$_file-$_now"
-}
-
-
-function append_file () {
-    declare _file
-    eval _file=$1
-    declare _lines="${@:2}"
-    declare _line
-
-    notify 1 "append_file: appending to $_file"
-    while read -r _line <&3; do
-        notify 2 "append_file: -- $_line"
-        echo "$_line" >> $_file
-    done 3<<< "$_lines"
 }
 
 
@@ -190,81 +105,6 @@ function install_software () {
     notify 1 "install_software: software:$_software"
 
     sudo apt-get -y install $_softwarelist
-}
-
-
-function install_snaps () {
-    declare _snaps=$1
-    # software list delineated by '&'
-    declare _snaplist=$(echo $_snaps | tr '&' ' ')
-
-    notify 1 "install_snaps: snaps:$_snaps"
-
-    sudo snap install $_snaplist
-}
-
-
-function add_gis_repos () {
-    declare _commands
-    declare _osversion=$(get_osversion)
-
-    notify 1 "add_gis_repos"
-
-    sudo su -c "echo \"deb https://qgis.org/ubuntu $_osversion main\" > /etc/apt/sources.list.d/qgis.list"
-    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-key 51F523511C7028C3
-
-    sudo apt-get -y update
-}
-
-
-function config_system () {
-    declare _lines
-    declare _now=$(date +%Y%m%d%H%M%S)
-
-    notify 1 "config_system: now:$_now"
-
-    backup_file /etc/hosts
-    sudo cp _hosts /etc/hosts
-}
-
-
-function config_user () {
-    declare _lines
-    declare _now=$(date +%Y%m%d%H%M%S)
-
-    notify 1 "config_user: now:$_now"
-
-    _lines=$(cat <<EOF
-        alias rm="rm -i"
-        alias pvc="python3.8 -m venv venv"
-        alias pva="source ./venv/bin/activate"
-
-        export PATH=\$PATH:\$HOME/bin
-        export EDITOR="/usr/bin/vim"
-        export GOPATH=\$HOME/go
-EOF
-    )
-
-    backup_file $HOME/.bashrc
-    append_file "$HOME/.bashrc" "$_lines"
-    
-    backup_file $HOME/.vimrc
-    cp $_CONFIGFOLDER/_vimrc $HOME/.vimrc
-
-    backup_file $HOME/.screenrc
-    cp $_CONFIGFOLDER/_screenrc $HOME/.screenrc
-
-    # update nautilus settings
-    #   https://www.yesterdayscoffee.de/2019/07/23/tree-view-in-nautilus-on-ubuntu-18-04/
-    gsettings set org.gnome.nautilus.preferences default-folder-viewer 'list-view'
-    gsettings set org.gnome.nautilus.list-view use-tree-view true
-
-    # switch windows with Alt-Tab
-    #   https://askubuntu.com/questions/1036248/how-to-separate-opened-windows-in-alttab-switcher-in-ubuntu-18-04
-    gsettings set org.gnome.desktop.wm.keybindings switch-windows "['<Alt>Tab']"
-    gsettings set org.gnome.desktop.wm.keybindings switch-windows-backward "['<Shift><Alt>Tab']"
-    gsettings set org.gnome.desktop.wm.keybindings switch-applications "['<Super>Tab']"
-    gsettings set org.gnome.desktop.wm.keybindings switch-applications-backward "['<Shift><Super>Tab']"
 }
 
 
@@ -318,27 +158,11 @@ function install_python3 () {
 
 getopts "aisup" OPTION
 case $OPTION in
-    a)
+    s)  # update system
         update_system
-        add_gis_repos 
-        install_software $_SOFTWARELIST
-        install_snaps $_SNAPS
-        config_system
-        config_user
+        install_software $__DEVELOPMENTSOFTWARE
         ;;
-    i)
-        update_system
-        add_gis_repos 
-        install_software $_SOFTWARELIST
-        install_snaps $_SNAPS
-        ;;
-    s)
-        config_system
-        ;;
-    u)
-        config_user
-        ;;
-    p)
+    p)  # install python3
         install_python3 
         ;;
     *)
@@ -346,3 +170,5 @@ case $OPTION in
         exit 1
         ;;
 esac
+
+
