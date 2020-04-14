@@ -156,7 +156,7 @@ function install_python3 () {
 
 
 
-getopts "aisup" OPTION
+getopts "sp" OPTION
 case $OPTION in
     s)  # update system
         update_system
