@@ -236,11 +236,11 @@ function launcher_main () {
                     --entry \
                     --title="Pass:")
                 if [[ ! -z "$_passstring" ]]; then
-                    safe_execute gpg \
+                    safe_execute_vm gpg \
                         qvm-run \
                         $__qvm_run_options \
                         gpg \
-                        "gnome-terminal -e \"bash -c 'grep $_passstring logins_2020;bash'\""
+                        "\"gnome-terminal -e 'bash -c \\\"grep $_passstring logins_2020;bash\\\"'\""
                 fi
                 ;;
                 
