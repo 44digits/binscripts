@@ -172,14 +172,31 @@ function qube_shutdown () {
 
 
 
+function safe_execute_vm () {
+    declare _vm=$1
+    declare _command=${@:2}
+
+    notify 2 "safe_execute_vm: vm:$_vm with $_command"
+
+    if [[ $(qube_get_state $_vm) == "Running" ]]; then
+        eval $_command
+    else
+        safe_execute $_command
+    fi
+}
+
+
+
 function safe_execute () {
     declare _command=$@
 
     notify 2 "safe_execute: $_command"
+
     lockit
     wait_disk_ready
     eval $_command
     unlockit
+
     notify 2 "safe_execute: evaled"
 }
 
@@ -219,8 +236,8 @@ function launcher_main () {
                     --entry \
                     --title="Pass:")
                 if [[ ! -z "$_passstring" ]]; then
-                    wait_disk_ready
-                    qvm-run \
+                    safe_execute gpg \
+                        qvm-run \
                         $__qvm_run_options \
                         gpg \
                         "gnome-terminal -e \"bash -c 'grep $_passstring logins_2020;bash'\""
@@ -265,28 +282,29 @@ function launcher_main () {
 
             # apps to run in any vm or dvm
             classicFM)
-                wait_disk_ready
-                qvm-run \
-                    $__qvm_run_options \
-                    media \
-                    "vlc /home/user/media/ClassicFMMP3.m3u" &
+                safe_execute_vm media \
+                    qvm-run \
+                        $__qvm_run_options \
+                        media \
+                        "vlc /home/user/media/ClassicFMMP3.m3u" &
                 ;;
 
             chromium | firefox | gedit | nautilus | xterm | gnome-terminal)
                 declare _vm=$(get_vmname)
 
-                wait_disk_ready
                 if [[ "$_vm" ]]; then 
                     if [[ "$_vm" == *"dvm"* ]]; then
-                        safe_execute qvm-run \
-                            $__qvm_run_options \
-                            --dispvm=$_vm \
-                            "$_app_selected" &
+                        safe_execute \
+                            qvm-run \
+                                $__qvm_run_options \
+                                --dispvm=$_vm \
+                                "$_app_selected" &
                     else
-                        qvm-run \
-                            $__qvm_run_options \
-                            $_vm \
-                            "$_app_selected" &
+                        safe_execute_vm $_vm \
+                            qvm-run \
+                                $__qvm_run_options \
+                                $_vm \
+                                "$_app_selected" &
                     fi
                 fi
                 ;;
@@ -300,18 +318,18 @@ function launcher_main () {
 
             # apps for specific vms
             hangouts)
-                wait_disk_ready
-                qvm_chrome usb03 "https://hangouts.google.com"
+                safe_execute_vm usb03 \
+                    qvm_chrome usb03 "https://hangouts.google.com"
                 ;;
 
             calibre)
-                wait_disk_ready
-                qvm-run $__qvm_run_options epub "calibre" &
+                safe_execute_vm epub \
+                    qvm-run $__qvm_run_options epub "calibre" &
                 ;;
                 
             kodi)
-                wait_disk_ready
-                qvm-run $__qvm_run_options media "kodi" &
+                safe_execute_vm media \
+                    qvm-run $__qvm_run_options media "kodi" &
                 ;;
                 
             scan)

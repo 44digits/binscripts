@@ -31,7 +31,7 @@ function qube_get_state () {
     declare _state
 
     _state=$(qvm-ls -n --fields=STATE,NAME \
-        | grep -w "$_vm" \
+        | grep -E "\s$_vm" \
         | cut -d' ' -f 1)
 
     notify 2 "qube_get_state: $_vm $_state"
