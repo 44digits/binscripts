@@ -60,9 +60,10 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
 EOF
 )
 
-__DVM=fedora-30-dvm 
-__VPN_NETWORK=sys-vpn-ro
-__qvm_run_options="-vp --color-stderr=37"
+declare __DVM=fedora-30-dvm 
+declare __VPN_NETWORK=sys-vpn-ro
+declare __qvm_run_options="-vp --color-stderr=37"
+declare __lockme=/tmp/launcher.lock
 
 
 
@@ -122,7 +123,7 @@ function firefox_plugins () {
         https://addons.mozilla.org/en-US/firefox/addon/printable-the-print-doctor/
 EOF
     )
-    qvm_firefox $__DVM $_urls
+    qvm_firefox $__DVM "$_urls" &
 
 #        https://addons.mozilla.org/en-US/firefox/addon/noscript/ 
 #        https://addons.mozilla.org/en-US/firefox/addon/adblock-plus/
@@ -140,13 +141,13 @@ function firefox_work () {
         https://crisismapperscovid-19.slack.com/
 EOF
     )
-    qvm_firefox $__DVM "$_urls"
+    qvm_firefox $__DVM "$_urls" &
 }
 
 
 
 function chrome_linkedin () {
-    qvm_chrome plus-dvm "https://linkedin.com"
+    qvm_chrome plus-dvm "https://linkedin.com" &
 }
 
 
@@ -167,6 +168,37 @@ function qube_shutdown () {
         qvm-shutdown --all
         sleep 15
     done
+}
+
+
+
+function safe_execute () {
+    declare _command=$@
+
+    notify 2 "safe_execute: $_command"
+    lockit
+    wait_disk_ready
+    eval $_command
+    unlockit
+    notify 2 "safe_execute: evaled"
+}
+
+
+
+function unlockit () {
+    sleep 1
+    rmdir $__lockme
+    notify 2 "unlockit: lock removed"
+}
+
+
+
+function lockit () {
+    while ! mkdir $__lockme 2>/dev/null; do
+        notify 2 "lockit: waiting"
+    done
+
+    notify 2 "lockit: lock made"
 }
 
 
@@ -200,8 +232,7 @@ function launcher_main () {
                     --entry \
                     --title="Search terms:")
                 if [[ ! -z "$_searchstring" ]]; then
-                    wait_disk_ready
-                    qvm_firefox $__DVM "-search \"$_searchstring\""
+                    safe_execute qvm_firefox $__DVM "-search \"$_searchstring\""
                 fi
                 ;;
 
@@ -209,33 +240,27 @@ function launcher_main () {
                 declare _url=$(zenity_fix \
                     --entry \
                     --title="URL")
-                wait_disk_ready
-                qvm_firefox $__DVM "$_url"
+                safe_execute qvm_firefox $__DVM "$_url"
                 ;;
 
             democracynow.org | aljazeera.com)
-                wait_disk_ready
-                qvm_chrome media-dvm "$_app_selected"
+                safe_execute qvm_chrome media-dvm "$_app_selected"
                 ;;
 
             google.com | gmail.com | privateemail.com)
-                wait_disk_ready
-                qvm_firefox $__DVM $_app_selected
+                safe_execute qvm_firefox $__DVM $_app_selected
                 ;;
 
             linkedin.com)
-                wait_disk_ready
-                chrome_linkedin
+                safe_execute chrome_linkedin
                 ;;
 
             workflowy.com)
-                wait_disk_ready
-                firefox_work
+                safe_execute firefox_work
                 ;;
 
             .plugins)
-                wait_disk_ready
-                firefox_plugins
+                safe_execute firefox_plugins
                 ;;
 
             # apps to run in any vm or dvm
@@ -253,13 +278,11 @@ function launcher_main () {
                 wait_disk_ready
                 if [[ "$_vm" ]]; then 
                     if [[ "$_vm" == *"dvm"* ]]; then
-                        wait_disk_ready
-                        qvm-run \
+                        safe_execute qvm-run \
                             $__qvm_run_options \
                             --dispvm=$_vm \
                             "$_app_selected" &
                     else
-                        wait_disk_ready
                         qvm-run \
                             $__qvm_run_options \
                             $_vm \
@@ -292,18 +315,17 @@ function launcher_main () {
                 ;;
                 
             scan)
-                wait_disk_ready
-                qvm-run \
+                safe_execute qvm-run \
                     $__qvm_run_options \
                     --dispvm=printer-dvm \
                     "xterm -e scanBro" &
                 ;;
             vpn)
-                wait_disk_ready
-                qvm-start --skip-if-running $__VPN_NETWORK
+                safe_execute qvm-start \
+                    --skip-if-running \
+                    $__VPN_NETWORK
 
-                wait_disk_ready
-                qvm-run \
+                safe_execute qvm-run \
                     --dispvm=vpn-dvm \
                     "/home/user/startup"
 
@@ -320,17 +342,10 @@ function launcher_main () {
                 qube_shutdown
                 ;;
             startup)
-                wait_disk_ready
-                qvm_firefox $__DVM "gmail.com"
-                
-                wait_disk_ready
-                firefox_plugins
-
-                wait_disk_ready
-                firefox_work
-
-                wait_disk_ready
-                chrome_linkedin
+                safe_execute "qvm_firefox $__DVM \"gmail.com\""
+                safe_execute firefox_plugins
+                safe_execute firefox_work
+                safe_execute chrome_linkedin
                 ;;
 
             *)

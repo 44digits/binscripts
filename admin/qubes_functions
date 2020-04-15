@@ -209,14 +209,14 @@ function disk_busy () {
 
 function wait_disk_ready () {
     # return when hard disk is no longer under load
-    declare _seconds
+    declare _seconds=1
     declare _DISKCHECKS=0
 
     while true; do 
         _DISKCHECKS=0
 
         for i in {1..4}; do 
-            _seconds=$(awk 'BEGIN{srand(); print rand() *2 }')
+            # _seconds=$(awk 'BEGIN{srand(); print rand() *2 }')
             sleep $_seconds
             _DISKCHECKS=$(( $_DISKCHECKS + $(disk_busy) ))
         done 
