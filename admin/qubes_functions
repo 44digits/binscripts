@@ -8,8 +8,8 @@
 # Date: 2019.09.18
 #
 
-__qvm_run_options="${__qvm_run_options:-"-p --color-stderr=37"}"
-__notifylevel="${__notifylevel:-2}"
+declare __qvm_run_options="${__qvm_run_options:-"-p --color-stderr=37"}"
+declare __notifylevel="${__notifylevel:-2}"
 
 
 
