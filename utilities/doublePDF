@@ -7,6 +7,7 @@
 #
 # 2019.08.29
 
-OUTPUTFILENAME="$(basename -s .pdf $1)_combine.pdf"
-pdftk A=$1 B=$2 shuffle A Bend-1 output $OUTPUTFILENAME
+declare _outputfilename="$(basename -s .pdf $1)_$(basename -s .pdf $2).pdf"
+pdftk A=$1 B=$2 shuffle A Bend-1 output $_outputfilename
+
 
