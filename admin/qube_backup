@@ -1,0 +1,156 @@
+#!/bin/bash
+
+# blockit
+# show list of available block devices and list of VMs, and attach
+#
+# Date: 2019.09.16
+
+
+declare __dialogheight=600
+
+function notify () {
+    cat <<< "$@" 1>&2
+    #:
+}
+
+
+# function zenity_fix () {
+#     zenity "$@" 2>/dev/null
+# }
+# 
+# 
+# function choose_vmname () {
+#     declare _vmlist
+#     declare _selectedvm
+# 
+#     _vmlist=$(qvm-ls --raw-list --running --exclude dom0 --all \
+#         | sort \
+#         | tr '[[:space:]]' ' ')
+#     _selectedvm=$(zenity_fix --height=$__dialogheight --list --title="VM" --column="VM" $_vmlist )
+#     notify "choose_vmname: $_selectedvm"
+#     echo $_selectedvm
+# }
+
+
+# function choose_device () {
+#     declare _blocks
+#     declare _usbs
+#     declare _selectedblock
+#     
+#     _blocks=$(qvm-device block \
+#         | sort \
+#         | awk '{printf("block/%s ",$1)}' \
+#         | paste -sd " " )
+# 
+#     _usbs=$(qvm-device usb \
+#         | sort \
+#         | awk '{printf("usb/%s ",$1)}' \
+#         | paste -sd " " )
+# 
+#     _selecteddevice=$(zenity \
+#         --height=$__dialogheight \
+#         --list \
+#         --title="Block" \
+#         --column="Block" \
+#         $_blocks "...................." $_usbs)
+#     notify "choose_device: $_selecteddevice"
+#     echo $_selecteddevice
+# }
+
+
+function get_deviceid () {
+    declare _vm=$1
+    declare _deviceid
+    _deviceid=$(qvm-run -p $_vm "lsblk | tac | grep -m 1 . | cut -d' ' -f 1")
+
+    notify "get_deviceid: $_deviceid"
+    echo "$_deviceid"
+}
+
+
+function attach_device () {
+    declare _vm=$1
+    declare _device=$2
+    declare _mountpoint=$3
+    declare _deviceid
+
+    notify "attach_device: qvm-device block attach $_vm $_device"
+    qvm-device block attach $_vm $_device
+
+    _deviceid=$(get_deviceid $_vm)
+    qvm-run -p -u root $_vm "mkdir -p $_mountpoint"
+    qvm-run -p -u root $_vm "chmod a+rwx $_mountpoint"
+    qvm-run -p -u root $_vm "mount -o uid=1000,gid=1000 /dev/$_deviceid $_mountpoint"
+
+    notify "attach_device: /dev/$_deviceid"
+    echo "/dev/$_deviceid"
+}
+
+
+function detach_device () {
+    declare _vm=$1
+    declare _device=$2
+    declare _mountpoint=$3
+
+    if [[ "$_class" == "block" ]]; then
+        qvm-run -p -u root $_vm "umount $_mountpoint"
+    fi
+    qvm-device $_class detach $_vm $_device
+    notify "detach_device: $_vm $_device"
+}
+
+
+declare _qubebackuplist
+read -r -d '' _qubebackuplist <<EOF
+    dev
+    epub
+    files
+    fin
+    gpg
+EOF
+
+
+function main () {
+    declare _vm
+    declare _device
+    declare _deviceid
+
+    echo "Blockit!"
+    _device=$(choose_device)
+    if [ -z "$_device" ]; then 
+        echo "ERROR: no device chosen"
+        exit 1
+    fi
+
+    _vm=$(choose_vmname)
+    if [ -z "$_vm" ]; then 
+        echo "ERROR: no vm chosen"
+        exit 1
+    fi
+    _deviceid=$(attach_device $_vm $_device)
+
+    zenity_fix --info --title "$_vm" --text "Waiting to disconnect $_device from $_vm"
+    detach_device $_vm $_device $_deviceid
+    notify "done..."
+}
+
+declare _backupdevice="dom0:md127"
+declare _mountpoint="/mnt/backup"
+declare _vm
+
+echo "list:$_qubebackuplist"
+
+for _vm in $_qubebackuplist; do
+
+    notify "Backup:$_vm"
+    _deviceid=$(attach_device $_vm $_backupdevice $_mountpoint)
+
+    qvm-run -p $_vm "$_backupcommand"
+
+    detach_device $_vm $_backupdevice $_mountpoint
+
+    notify "...$_vm finished backup"
+    notify ""
+done
+
+
