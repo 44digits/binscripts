@@ -1,19 +1,129 @@
 #!/bin/bash
 
-# bakup
-# tar relevant directories and copy to file server
+# qube_backup
+# backup qubes on raid 
+#
+# Date: 2020.04.16
 
-TARNAME="dom0_backup_$(date +"%Y%m%d-%H%M%S").tgz"
-DIRS="bin Desktop"
-DESTVM=dev
 
-echo "Backup dom0"
-echo "  $TARNAME: $DIRS"
-echo
 
-tar -C ~/ -cvzf $TARNAME $DIRS
-qvm-copy-to-vm $DESTVM $TARNAME
+declare _backupdevice="dom0:md127"
+declare _mountpoint="/mnt/backup"
+declare _qubebackuplist
+declare __qvm_run_options="${__qvm_run_options:-"-p --color-stderr=37"}"
+declare __dialogheight=600
 
-qvm-run -p $DESTVM "mv ~/QubesIncoming/dom0/$TARNAME ~/system/dom0/"
+read -r -d '' _qubebackuplist <<EOF
+    dev
+    epub
+    files
+    fin
+    gpg
+EOF
+set -e 
 
-echo "...done"
+
+
+function notify () {
+    cat <<< "$@" 1>&2
+    #:
+}
+
+
+
+function get_deviceid () {
+    declare _vm=$1
+    declare _deviceid
+    _deviceid=$(qvm-run $__qvm_run_options $_vm "lsblk | tac | grep -m 1 . | cut -d' ' -f 1")
+
+    notify "get_deviceid: $_deviceid"
+    echo "$_deviceid"
+}
+
+
+
+function attach_device () {
+    declare _vm=$1
+    declare _device=$2
+    declare _mountpoint=$3
+    declare _deviceid
+
+    notify "attach_device: qvm-device block attach $_vm $_device (on $_mountpoint)"
+    # perform run action to wake up qube
+    qvm-run $__qvm_run_options -u root $_vm "mkdir -p $_mountpoint"
+
+    qvm-device block attach $_vm $_device
+    _deviceid=$(get_deviceid $_vm)
+    qvm-run $__qvm_run_options -u root $_vm "chmod a+rwx $_mountpoint"
+    qvm-run $__qvm_run_options -u root $_vm "mount /dev/$_deviceid $_mountpoint"
+
+    declare _mounted=$(qvm-run $__qvm_run_options $_vm "grep $_mountpoint /proc/mounts")
+    if [[ -z $_mounted ]]; then
+        notify "ERROR: attach_device /dev/$_deviceid not mounted"
+        exit 1
+    else
+        notify "attach_device: /dev/$_deviceid"
+        echo "/dev/$_deviceid"
+    fi
+}
+
+
+
+function detach_device () {
+    declare _vm=$1
+    declare _device=$2
+    declare _mountpoint=$3
+    declare _xx
+
+    qvm-run $__qvm_run_options $_vm "sync"
+    sleep 2
+    notify "detach_device: continue?"
+    read _xx
+
+    qvm-run $__qvm_run_options -u root $_vm "umount $_mountpoint"
+    sleep 2
+    qvm-device block detach $_vm $_device
+    notify "detach_device: $_vm $_device"
+}
+
+
+
+function main () {
+    declare _cmd
+    declare _vm
+
+    notify "Qube Backup starting..."
+
+    for _vm in $_qubebackuplist; do
+        notify "-- $_vm: starting backup"
+        
+        _deviceid=$(attach_device $_vm $_backupdevice $_mountpoint)
+
+        _cmd=$(tr -s [:space:] ' ' <<EOF
+            rsync
+                --delete
+                --ignore-errors
+                -av
+                --filter="- *cache*"
+                --filter="- *humbnail*"
+                --filter="- *venv*"
+                --filter="- *.iso"
+                --filter="- *.git*"
+                /home/user/
+                /mnt/backup/bak/qubes/$_vm/
+EOF
+            )
+        qvm-run $__qvm_run_options $_vm "$_cmd"
+
+        detach_device $_vm $_backupdevice $_mountpoint
+        notify "-- $_vm: finished backup"
+    done
+
+    notify "...Qube Backup finished"
+}
+
+
+
+main
+
+
