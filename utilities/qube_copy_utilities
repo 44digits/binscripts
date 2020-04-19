@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# qube_copy_utilities
+
+declare _sourceqube=dev
+declare _sourcedir=/home/user/system/utilities
+declare _destdir=$(dirname "$0")
+declare _filelist
+
+read -r -d '' _filelist <<EOF
+    appendPDF
+    chromiumDelete
+    chromiumDeleteProxy
+    doublePDF
+    dreamTunnel
+    img2pdf
+    makeDream
+    mntv
+    postTrello
+    postTrello.secrets
+    printBro
+    randomChars.py
+    scanBro
+    updateVault
+    updateVault.secrets
+EOF
+
+for _f in $_filelist; do
+    echo $_f
+    qvm-run -p \
+        $_sourceqube \
+        "cat $_sourcedir/$_f" \
+        > $_destdir/$_f
+done
+
+
