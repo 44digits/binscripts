@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source $(dirname "$0")/secrets
+source $(dirname "$0")/updateVault.secrets
 
 echo -e "\nUpdate Vault ???"
 read X
