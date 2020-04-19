@@ -333,7 +333,8 @@ function launcher_main () {
             hostnames)
                 declare _vm=$(get_vmname)
                 if [[ "$_vm" ]]; then 
-                    ~/bin/hostnames $_vm 
+                    declare _localdir=$(dirname "$0")
+                    $_localdir/qube_hostnames $_vm 
                 fi
                 ;;
 
