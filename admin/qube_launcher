@@ -214,7 +214,7 @@ function safe_execute () {
 
     lockit
     wait_disk_ready
-    eval $_command
+    eval $_command &
     unlockit
 
     notify 2 "safe_execute: evaled"
@@ -307,7 +307,7 @@ function launcher_main () {
                     qvm-run \
                         $__qvm_run_options \
                         media \
-                        "\"vlc /home/user/media/ClassicFMMP3.m3u\"" &
+                        "\"vlc /home/user/media/ClassicFMMP3.m3u\""
                 ;;
 
             chromium | firefox | gedit | nautilus | xterm | gnome-terminal)
@@ -319,13 +319,13 @@ function launcher_main () {
                             qvm-run \
                                 $__qvm_run_options \
                                 --dispvm=$_vm \
-                                "$_app_selected" &
+                                "$_app_selected"
                     else
                         safe_execute_vm $_vm \
                             qvm-run \
                                 $__qvm_run_options \
                                 $_vm \
-                                "$_app_selected" &
+                                "$_app_selected"
                     fi
                 fi
                 ;;
@@ -352,19 +352,19 @@ function launcher_main () {
 
             calibre)
                 safe_execute_vm epub \
-                    qvm-run $__qvm_run_options epub "calibre" &
+                    qvm-run $__qvm_run_options epub "calibre"
                 ;;
                 
             kodi)
                 safe_execute_vm media \
-                    qvm-run $__qvm_run_options media "kodi" &
+                    qvm-run $__qvm_run_options media "kodi"
                 ;;
                 
             scan)
                 safe_execute qvm-run \
                     $__qvm_run_options \
                     --dispvm=printer-dvm \
-                    "xterm -e scanBro" &
+                    "xterm -e scanBro"
                 ;;
             vpn)
                 safe_execute qvm-start \
