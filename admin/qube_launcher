@@ -189,10 +189,11 @@ function qube_vpn () {
 function install_posttrello () {
     declare _destqube=$1
     declare _f
+    declare _mydir=$(dirname "$0")
 
     cat <<EOF |
-    ./utilities/postTrello
-    ./utilities/postTrello.secrets
+    $_mydir/utilities/postTrello
+    $_mydir/utilities/postTrello.secrets
 EOF
 
     while read _f; do
