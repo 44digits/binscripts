@@ -153,6 +153,39 @@ function chrome_linkedin () {
 
 
 
+function get_vpn_qubename () {
+    declare _vpnname=$(qvm-ls --fields NAME,TEMPLATE --running \
+        | grep vpn-dvm \
+        | cut -f 1 -d ' '
+        )
+
+    echo $_vpnname
+}
+
+
+
+function qube_vpn () {
+    declare _vpndvm
+    
+    safe_execute qvm-start \
+        --skip-if-running \
+        $__VPN_NETWORK
+
+    safe_execute qvm-run \
+        --dispvm=vpn-dvm \
+        "/home/user/startup"
+
+    zenity_fix --info --title "VPN" --text "Waiting to kill VPN"
+    _vpndvm=$(get_vpn_qubename)
+
+    notify 2 "qube_vpn found:$_vpndvm"
+
+    qvm-kill $_vpndvm
+    qvm-shutdown $__VPN_NETWORK
+}
+
+
+
 function install_posttrello () {
     declare _destqube=$1
     declare _f
@@ -367,15 +400,7 @@ function launcher_main () {
                     "xterm -e scanBro"
                 ;;
             vpn)
-                safe_execute qvm-start \
-                    --skip-if-running \
-                    $__VPN_NETWORK
-
-                safe_execute qvm-run \
-                    --dispvm=vpn-dvm \
-                    "/home/user/startup"
-
-                qvm-shutdown $__VPN_NETWORK
+                qube_vpn
                 ;;
             # system maintenance
             ping)
