@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=makeLink
+Comment=Connect to VPN
+Exec=/usr/bin/gksu "gnome-terminal -e /home/marina/bin/makeLink"
+Icon=/home/marina/bin/makeLink.png
+Terminal=false
+
