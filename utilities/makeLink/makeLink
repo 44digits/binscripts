@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# makeLink
+# download openvpn file and create vpn link
+# 2015.12.28
+
+# import
+# CONFIGDIR
+# URL
+# OVPN
+source $(dirname "$0")/makeLink.secrets
+
+rm -rf $CONFIGDIR
+mkdir $CONFIGDIR
+
+wget -O $CONFIGDIR/v.zip $URL
+unzip -d $CONFIGDIR $CONFIGDIR/v.zip
+
+/usr/sbin/openvpn --cd $CONFIGDIR --config $OVPN &
+sleep 30
+
+echo -e "\n\n\n\n\n"
+curl -s checkip.dyndns.org | sed 's/<[^>]\+>/ /g'
+
+echo
+read A
+killall openvpn
+sleep 20
+

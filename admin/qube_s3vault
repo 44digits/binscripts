@@ -9,7 +9,8 @@ declare _LOCALS3SCRIPT="/home/user/QubesIncoming/dom0/$S3SCRIPT"
 declare _TARLIST=".s3cfg .vault/"
 
 declare _S3=
-source $(dirname "$0")/secrets
+source $(dirname "$0")/$0.secrets
+
 
 
 function dom0_run {

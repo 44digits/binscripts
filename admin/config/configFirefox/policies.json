@@ -1,0 +1,61 @@
+{
+  "policies": {
+    "DisableAppUpdate": true,
+    "DisableFirefoxAccounts": true,
+    "DisableFirefoxStudies": true,
+    "DisablePocket": true,
+    "DisableProfileImport": true,
+    "DisableProfileRefresh": true,
+    "DisableSetDesktopBackground": true,
+    "DisableSystemAddonUpdate": true,
+    "DisableTelemetry": true,
+    "DisplayBookmarksToolbar": true,
+    "DisplayMenuBar": true,
+    "EnableTrackingProtection": {
+      "Cryptomining": true,
+      "Fingerprinting": true,
+      "Value": true
+    },
+    "ExtensionUpdate": false,
+    "FirefoxHome": {
+      "Highlights": false,
+      "Pocket": false,
+      "Search": true,
+      "Snippets": false,
+      "TopSites": false
+    },
+    "Homepage": {
+      "StartPage": "none",
+      "URL":"https://google.com"
+    },
+    "NewTabPage": false,
+    "NoDefaultBookmarks": true,
+    "OfferToSaveLoginsDefault": true,
+    "OverrideFirstRunPage": "",
+    "OverridePostUpdatePage": "",
+    "Preferences": {
+      "dom.disable_window_flip": true,
+      "dom.disable_window_move_resize": true,
+      "dom.event.contextmenu.enabled": false,
+      "extensions.getAddons.showPane": false,
+      "browser.search.update": true,
+      "browser.tabs.warnOnClose": false,
+      "browser.tabs.warnOnCloseOtherTabs": false,
+      "datareporting.policy.dataSubmissionPolicyBypassNotification": false,
+      "dom.disable_window_flip": true,
+      "dom.disable_window_move_resize": true,
+      "network.IDN_show_punycode": true
+    },
+    "PromptForDownloadLocation": true,
+    "SanitizeOnShutdown": {
+      "Cache": true,
+      "Cookies": true,
+      "Downloads": true,
+      "FormData": true,
+      "History": true,
+      "OfflineApps": true,
+      "Sessions": true,
+      "SiteSettings": true
+    }
+  }
+}

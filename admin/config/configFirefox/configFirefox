@@ -1,0 +1,12 @@
+#!/bin/bash
+#
+# set up firefox for enterprise security/deploment
+# Fedora 30
+
+
+mkdir -p /etc/firefox/pref/
+mkdir -p /usr/lib64/firefox/distribution/
+
+cp autoconfig.js /etc/firefox/pref/
+cp firefox.cfg /etc/firefox/pref/
+cp policies.json /usr/lib64/firefox/distribution/policies.json

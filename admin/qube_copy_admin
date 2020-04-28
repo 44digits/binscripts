@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# qube_copy_utilities
+
+declare _sourceqube=dev
+declare _sourcedir=/home/user/system/admin
+declare _destdir=$(dirname "$0")
+declare _filelist
+
+read -r -d '' _filelist <<EOF
+    qube_admin
+    qube_backup
+    qube_blockit
+    qube_hostnames
+    qube_launcher
+    qube_make_gis
+    qube_s3vault
+    qube_s3vault.secrets
+    qubes_functions
+EOF
+
+for _f in $_filelist; do
+    echo $_f
+    qvm-run -p \
+        $_sourceqube \
+        "cat $_sourcedir/$_f" \
+        > $_destdir/$_f
+done
+
+

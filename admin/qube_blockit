@@ -83,7 +83,7 @@ function attach_device () {
         _deviceid=$(get_deviceid $_vm)
         qvm-run -p -u root $_vm "mkdir -p /mnt/$_deviceid"
         qvm-run -p -u root $_vm "chmod a+rwx /mnt/$_deviceid"
-        qvm-run -p -u root $_vm "mount -o uid=1000,gid=1000 /dev/$_deviceid /mnt/$_deviceid"
+        qvm-run -p -u root $_vm "mount /dev/$_deviceid /mnt/$_deviceid"
         notify "attach_device: /dev/$_deviceid"
         echo "/dev/$_deviceid"
     else
@@ -103,7 +103,10 @@ function detach_device () {
     _devicecode=$(echo "$_device" | cut -d '/' -f 2)
 
     if [[ "$_class" == "block" ]]; then
+        qvm-run -p $_vm "sync"
+        sleep 2
         qvm-run -p -u root $_vm "umount $_deviceid"
+        sleep 2
     fi
     qvm-device $_class detach $_vm $_devicecode
     notify "detach_device: $_vm $_device"
