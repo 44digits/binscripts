@@ -483,6 +483,7 @@ VM_SOFT=(
         s3cmd
         screen
         tmux
+        remmina
         vlc
         xournal
         xsane
