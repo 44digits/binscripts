@@ -80,6 +80,35 @@ function qube_run_commands () {
 }
 
 
+
+function qube_remove_incomming () {
+    declare _vm=$1
+
+    qvm-run \
+        $__qvm_run_options \
+        "$_vm" \
+        "rm -rf /home/user/QubesIncoming/"
+}
+
+
+
+function qube_copy_file () {
+    declare _vm=$1
+    declare _user=$2
+    declare _localfile=$3
+    declare _filename=$(basename "$_localfile")
+    declare _remotefile=$4
+
+    qvm-copy-to-vm $_vm $_localfile
+    qvm-run \
+        $__qvm_run_options \
+        -u "$_user" \
+        "$_vm" \
+        "cp /home/user/QubesIncoming/dom0/$_filename $_remotefile"
+}
+
+
+
 function qube_write_file () {
     declare _vm=$1
     declare _user=$2

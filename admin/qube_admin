@@ -9,10 +9,9 @@
 #
 
 
-declare _MASTERTEMPLATE=debian-9
+declare _MASTERTEMPLATE=debian-10
 declare _SYSTEMTEMPLATE=fedora-28-30
 declare _CONFIGDIR="$(dirname $0)/config/"
-declare _DOTDIR="$(dirname $0)../dotfiles/"
 
 declare __notifylevel="${__notifylevel:-2}"
 declare __qvm_run_options="${__qvm_run_options:-"-p --color-stderr=37"}"
@@ -47,37 +46,75 @@ source $(dirname "$0")/qubes_functions
 #}
 
 
+
+function create_template () {
+    declare _template=$1
+    declare _software=$2
+    notify 1 "--create_template : _template:$_template, _software:$_software"
+
+    qvm-clone $_MASTERTEMPLATE $_template
+    qube_update_vm $_template
+    qube_install_software $_template $_software
+    qvm-sync-appmenus $_template
+    qvm-shutdown $_template
+}
+
+
+
 function config_user () {
     declare _appvm=$1
     declare _commands
 
     notify 2 "--config_user _appvm:$_appvm"
 
+    # nautilus config
     _commands=$(cat <<EOF
         dconf write /org/gnome/nautilus/list-view/defualt-zoom-level "'small'"
         dconf write /org/gnome/nautilus/list-view/use-tree-view true
         dconf write /org/gnome/nautilus/preferences/default-folder-viewer "'list-view'"
         dconf write /org/gtk/settings/file-chooser/expand-folders true
         dconf write /org/gtk/settings/file-chooser/sort-directories-first true
-        dconf write /org/gtk/settings/file-chooser/sort-directories-first true"
 EOF
     )
-
     qube_run_commands $_appvm "user" $_commands
 
-    declare _lines=$(cat $_DOTDIR/_bashrc)
-    qube_append_file $_appvm "user" \
+    declare _lines=$(cat dotfiles/__bashrc)
+    qube_append_file \
+        $_appvm \
+        "user" \
         "/home/user/.bashrc" \
         $_lines
-    qube_copy_file $_appvm \
+    qube_copy_file \
+        $_appvm \
         "user" \
-        "$_DOTDIR/_vimrc" \
+        "dotfiles/_vimrc" \
         "/home/user/.vimrc"
-    qube_copy_file $_appvm \
+    qube_copy_file \
+        $_appvm \
         "user" \
-        "$_DOTDIR/_screenrc" \
+        "dotfiles/_screenrc" \
         "/home/user/.screenrc"
+
+    qube_remove_incomming
 }
+
+
+function config_firefox_addons () {
+    declare _appvm=$1
+    declare _commands
+
+    notify 2 "--config_firefox_addons  _appvm:$_appvm"
+
+    _commands=$(cat <<EOF
+        firefox 
+            https://addons.mozilla.org/en-US/firefox/addon/noscript/ 
+            https://addons.mozilla.org/en-US/firefox/addon/adblock-plus/ 
+EOF
+    )
+    _commands=$(echo $_commands | tr '[:space:]' ' ')
+    qube_run_commands $_appvm "user" $_commands
+}
+
 
 
 function config_firefox () {
@@ -86,16 +123,19 @@ function config_firefox () {
 
     notify 2 "--config_firefox  _appvm:$_appvm"
 
-    _commands=$(cat <<EOF
-        firefox 
-            https://addons.mozilla.org/en-US/firefox/addon/noscript/ 
-            https://addons.mozilla.org/en-US/firefox/addon/adblock-plus/ 
-            https://addons.mozilla.org/en-US/firefox/addon/disabled-add-on-fix-57-60/
-EOF
-    )
-    _commands=$(echo $_commands | tr '[:space:]' ' ')
-    qube_run_commands $_appvm "user" $_commands
+    for _f in ls config/configFirefox/; do
+        qvm-copy-to-vm $_template $_f
+    done
+
+    qvm-run \
+        $__qvm_run_options \
+        -u "root" \
+        $_apppvm \
+        "/home/user/QubesIncoming/dom0/configFirefox"
+
+    qube_remove_incomming
 }
+
 
 
 #function update_template () {
@@ -176,19 +216,6 @@ function create_vpn () {
         $_vpnappdvm \
         "bash /tmp/configure_vpn_client"
     qvm-shutdown $_vpnappdvm 
-}
-
-
-function create_template () {
-    declare _template=$1
-    declare _software=$2
-    notify 1 "--create_template : _template:$_template, _software:$_software"
-
-    qvm-clone $_MASTERTEMPLATE $_template
-    qube_update_vm $_template
-    qube_install_software $_template $_software
-    qvm-sync-appmenus $_template
-    qvm-shutdown $_template
 }
 
 
@@ -456,72 +483,52 @@ function make_win_vm () {
 
 
 
-# action: create, update, delete
-ACTION=''
-VM=''
-while getopts "cudv:" OPTION; do
-    case $OPTION in
-        c)
-            if [[ $ACTION == '' ]]; then
-                ACTION=CREATE
-            else
-                echo "error - only one action"
-                print_help
-                exit 1
-            fi
-            ;;
-        u)
-            if [[ $ACTION == '' ]]; then
-                ACTION=UPDATE
-            else
-                echo "error - only one action"
-                print_help
-                exit 1
-            fi
-            ;;
-        d)
-            if [[ $ACTION == '' ]]; then
-                ACTION=DELETE
-            else
-                echo "error - only one action"
-                print_help
-                exit 1
-            fi
-            ;;
-        v)
-            if [[ $VM == '' ]]; then
-                VM=$OPTARG
-            else
-                echo "error - only one vm"
-                print_help
-                exit 1
-            fi
-            ;;
-        *)
-            print_help
-            exit 1
-            ;;
-    esac
-done
+function main () {
+    # make templates
 
-if [ "$ACTION" == "" ] || [ "$VM" == "" ]; then
-    echo "error - specify action and vm"
-    print_help
-    exit 1
-fi
+    TEMPLATE=${VM_TEMPLATE_NAMES[min]}
+    SOFTWARE=${VM_SOFT[min]}
+    create_template $TEMPLATE $SOFTWARE
+    create_min_appvms ${VM_TEMPLATE_NAMES[min]}
+
+    # make apps
+    # make dvms
+}
 
 
 declare -A VM_SOFT
 declare -A VM_TEMPLATE_NAMES
+declare -A VM_CONFIG
 
 VM_TEMPLATE_NAMES=(
-    [plus]=debian-9-plus
-    [media]=debian-9-media
-    [min]=debian-9-min
-    [dev]=debian-9-dev
-    [printer]=debian-9-printer
-    [gis]=debian-9-gis
-    [master]=debian-9
+    [master]=$_MASTERTEMPLATE
+    [system]=$_SYSTEMTEMPLATE
+    [dev]=$_MASTERTEMPLATE-dev
+    [media]=$_MASTERTEMPLATE-media
+    [min]=$_MASTERTEMPLATE-min
+    [plus]=$_MASTERTEMPLATE-plus
+    [printer]=$_MASTERTEMPLATE-printer
+    [usb]=$_SYSTEMTEMPLATE-usb
+    [zoom]=$_MASTERTEMPLATE-zoom
+    )
+
+VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
+    [dev]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;dev;10240;2;default;0"
+    [files]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;800;400;files;152576;1;;0"
+    [fin]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;1024;400;fin;9216;1;;0"
+    [gpg]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;800;400;gpg;2048;1;;0"
+    [media]="AppVM;${VM_TEMPLATE_NAMES[media]};green;8192;1024;media;30720;2;default;0"
+    [media-dvm]="AppVM;${VM_TEMPLATE_NAMES[media]};red;8192;820;media-dvm;8192;2;default;1"
+    [epub]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;2000;500;epub;50176;1;default;0"
+    [plus-dvm]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;4096;400;plus-dvm;5120;2;default;1"
+    [printer-dvm]="AppVM;${VM_TEMPLATE_NAMES[printer]};red;974;350;printer-dvm;2048;1;default;1"
+    [zoom]="AppVM;${VM_TEMPLATE_NAMES[zoom]};red;4000;400;zoom;2048;3;default;1"
+    [usb]="AppVM;${VM_TEMPLATE_NAMES[zoom]};red;4000;2000;usb;22528;3;default;0"
+    [vpn-dvm]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;4000;400;vpn-dvm;9216;2;sys-vpn-ro;1"
+    [vpn-dvm-big]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;4000;400;vpn-dvm-big;28672;2;sys-vpn-ro;1"
+    [sys-vpn-ro]="AppVM;${VM_TEMPLATE_NAMES[system]};red;500;400;sys-vpn-ro;2048;1;sys-net;0"
+    [work]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;work;20480;1;default;0"
+    [fedora-dvm]="AppVM;${VM_TEMPLATE_NAMES[system]};red;2000;600;fedora-dvm;2048;2;default;1"
     )
 
 VM_SOFT=( 
@@ -597,6 +604,63 @@ EOF
 EOF
     )
 )
+
+
+# action: create, update, delete
+ACTION=''
+VM=''
+while getopts "cudv:" OPTION; do
+    case $OPTION in
+        c)
+            if [[ $ACTION == '' ]]; then
+                ACTION=CREATE
+            else
+                echo "error - only one action"
+                print_help
+                exit 1
+            fi
+            ;;
+        u)
+            if [[ $ACTION == '' ]]; then
+                ACTION=UPDATE
+            else
+                echo "error - only one action"
+                print_help
+                exit 1
+            fi
+            ;;
+        d)
+            if [[ $ACTION == '' ]]; then
+                ACTION=DELETE
+            else
+                echo "error - only one action"
+                print_help
+                exit 1
+            fi
+            ;;
+        v)
+            if [[ $VM == '' ]]; then
+                VM=$OPTARG
+            else
+                echo "error - only one vm"
+                print_help
+                exit 1
+            fi
+            ;;
+        *)
+            print_help
+            exit 1
+            ;;
+    esac
+done
+
+if [ "$ACTION" == "" ] || [ "$VM" == "" ]; then
+    echo "error - specify action and vm"
+    print_help
+    exit 1
+fi
+
+
 
 if [ "$DEBUG" ]; then echo "--VM:$VM, ACTION:$ACTION"; fi
 
