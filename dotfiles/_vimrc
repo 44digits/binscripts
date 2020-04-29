@@ -1,11 +1,11 @@
 " Vim plug
-call plug#begin('~/.vim/pluggs')
-
-Plug 'https://github.com/tpope/vim-fugitive.git'
-Plug 'xuhdev/vim-latex-live-preview'
-Plug 'https://tpope.io/vim/surround.git'
-
-call plug#end()
+"call plug#begin('~/.vim/pluggs')
+"
+"Plug 'https://github.com/tpope/vim-fugitive.git'
+"Plug 'xuhdev/vim-latex-live-preview'
+"Plug 'https://tpope.io/vim/surround.git'
+"
+"call plug#end()
 
 
 
