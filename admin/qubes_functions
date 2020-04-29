@@ -39,6 +39,19 @@ function qube_get_state () {
 }
 
 
+
+function qube_get_distribution () {
+    if [[ -f "/etc/fedora-release" ]]; then
+        echo "fedora"
+    elif [[ -f "/etc/os-release" ]]; then
+        echo "debian"
+    else
+        echo "unknown"
+    fi
+}
+
+
+
 function qube_get_ip () {
     declare _vm=$1
     declare _ip
@@ -141,12 +154,14 @@ function qube_append_file () {
 
 function qube_update () {
     declare _vm=$1
-    declare _ostype=$2
+    declare _ostype
     declare _cmd
+
+    _ostype=$( qube_get_distribution )
     notify 2 "qube_update: vm:$_vm ($_ostype)"
 
     case $_ostype in
-        "Debian")
+        "debian")
             _commands=$(cat <<EOF
                 apt-get -y update
                 apt-get -y upgrade
@@ -157,7 +172,7 @@ function qube_update () {
 EOF
             )
             ;;
-        "Fedora")
+        "fedora")
             _commands=$(cat <<EOF
                 dnf upgrade -y
                 dnf clean all
