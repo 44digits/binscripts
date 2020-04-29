@@ -534,12 +534,10 @@ function make_win_vm () {
 function create_min () {
     declare _vm
 
-    # test if exists
-
     # min
     TEMPLATE=${VM_TEMPLATE_NAMES[min]}
     SOFTWARE=${VM_SOFT[min]}
-##    create_template $TEMPLATE $_MASTERTEMPLATE $SOFTWARE
+    create_template $TEMPLATE $_MASTERTEMPLATE $SOFTWARE
 
     for _vm in files fin gpg; do
         create_appvm $_vm ${VM_CONFIG[$_vm]}
@@ -573,7 +571,7 @@ function create_min () {
 
     for _vm in files fin gpg; do
         qube_remove_incomming $_vm
-##        qvm-shutdown $_vm
+        qvm-shutdown $_vm
     done
 }
 
