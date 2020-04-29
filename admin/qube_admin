@@ -539,13 +539,22 @@ function create_min () {
     SOFTWARE=${VM_SOFT[min]}
     create_template $TEMPLATE $_MASTERTEMPLATE $SOFTWARE
 
-    for _vm in files fin gpg; do
+    for _vm in \
+        files \
+        fin \
+        gpg;
+    do
         create_appvm $_vm ${VM_CONFIG[$_vm]}
         config_user $_vm
     done
 
     # files setup
-    for _f in appendPDF doublePDF img2pdf randomChars.py; do
+    for _f in \
+        appendPDF \
+        doublePDF \
+        img2pdf \
+        randomChars.py; 
+    do
         qube_copy_file \
             files \
             "root" \
@@ -554,7 +563,14 @@ function create_min () {
     done
 
     # fin setup
-    for _f in appendPDF img2pdf mntv randomChars.py updateVault updateVault.secrets; do
+    for _f in \
+        appendPDF \
+        img2pdf \
+        mntv \
+        randomChars.py \
+        updateVault \
+        updateVault.secrets; 
+    do
         qube_copy_file \
             fin \
             "root" \
