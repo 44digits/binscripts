@@ -39,6 +39,47 @@ function qube_get_state () {
 }
 
 
+
+function qube_exists () {
+    declare _vm=$1
+
+    qvm-ls --raw-list \
+        | grep -e "^$_vm$" \
+        > /dev/null
+
+    if [[ $? -eq 0 ]]; then
+        echo "exists"
+    else
+        echo ""
+    fi
+}
+
+
+
+function qube_get_distribution () {
+    declare _vm=$1
+    declare _distribution
+    declare _cmd
+    
+    _cmd=$(tr -s [:space:] <<EOF | tr -d '\n' 
+        if [[ -f "/etc/fedora-release" ]]; then echo fedora;
+        elif [[ -f "/etc/os-release" ]]; then echo debian;
+        else echo unknown;
+        fi
+EOF
+)
+    
+    _distribution=$(qvm-run \
+        -p \
+        -u user \
+        "$_vm" \
+        "$_cmd"
+        )
+    echo $_distribution
+}
+
+
+
 function qube_get_ip () {
     declare _vm=$1
     declare _ip
@@ -69,8 +110,6 @@ function qube_run_commands () {
     declare _commands="${@:3}"
     declare _cmd
 
-    if [[ -z "$_user" ]]; then _user="user"; fi
-
     notify 2 "qube_run_commands: VM:$_vm user:$_user"
 
     while read -r _cmd <&3; do
@@ -78,6 +117,35 @@ function qube_run_commands () {
         qvm-run $__qvm_run_options -u "$_user" "$_vm" "$_cmd"
     done 3<<< "$_commands"
 }
+
+
+
+function qube_remove_incomming () {
+    declare _vm=$1
+
+    qvm-run \
+        $__qvm_run_options \
+        "$_vm" \
+        "rm -rf /home/user/QubesIncoming/"
+}
+
+
+
+function qube_copy_file () {
+    declare _vm=$1
+    declare _user=$2
+    declare _localfile=$3
+    declare _filename=$(basename "$_localfile")
+    declare _remotefile=$4
+
+    qvm-copy-to-vm $_vm $_localfile
+    qvm-run \
+        $__qvm_run_options \
+        -u "$_user" \
+        "$_vm" \
+        "cp /home/user/QubesIncoming/dom0/$_filename $_remotefile"
+}
+
 
 
 function qube_write_file () {
@@ -112,12 +180,14 @@ function qube_append_file () {
 
 function qube_update () {
     declare _vm=$1
-    declare _ostype=$2
+    declare _ostype
     declare _cmd
+
+    _ostype=$( qube_get_distribution $_vm )
     notify 2 "qube_update: vm:$_vm ($_ostype)"
 
     case $_ostype in
-        "Debian")
+        "debian")
             _commands=$(cat <<EOF
                 apt-get -y update
                 apt-get -y upgrade
@@ -128,7 +198,7 @@ function qube_update () {
 EOF
             )
             ;;
-        "Fedora")
+        "fedora")
             _commands=$(cat <<EOF
                 dnf upgrade -y
                 dnf clean all
@@ -145,18 +215,20 @@ EOF
 
 function qube_install_software () {
     declare _vm=$1
-    declare _ostype=$2
-    declare _software=$3
+    declare _software=$2
+    declare _ostype
+    
+    _ostype=$( qube_get_distribution $_vm )
     notify 2 "qube_install_software: vm:$_vm ostype:$_ostype software:$_software"
 
     # software list delineated by '&'
     declare _softwarelist=$(echo $_software | tr '&' ' ')
 
     case $_ostype in
-        "Debian")
+        "debian")
             declare _install="apt-get -y install $_softwarelist"
             ;;
-        "Fedora")
+        "fedora")
             declare _install="dnf install -y $_softwarelist"
             ;;
         *)

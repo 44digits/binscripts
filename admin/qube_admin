@@ -1,240 +1,378 @@
 #!/bin/bash
 
-MASTERTEMPLATE=debian-9
-CONFIGDIR=/home/ross/bin/config/
-DEBUG=1
-
-function print_help() {
-    echo "Usage: vm_mgmt (-c | -u | -d) -v (VMNAME|all)"
-    echo "  where VNAME in usb,plus,media,dev,vault,printer"
-    exit 1
-}
+# qube_mgmt
+#
+# automate the creation and updating of qubes
+#
+# Date: 2019.10.10
+# Author: Andrew Ross
+#
 
 
-function check_vm () {
-    # check if vm exists - delete or exit
-    declare vmname=$1
-    if [ "$DEBUG" ]; then echo "--check_vm: vmname:$vmname"; fi
-    
-    #qvm-ls -O NAME | grep $vmname
-    qvm-check $vmname
-    if [ "$?" -eq 0 ]; then
-        read -p "  delete (n/Y)?" R
-        if [ "$R" == "Y" ]; then 
-            qvm-remove $vmname
-            if [ "$?" -ne 0 ]; then exit 1; fi
-        else
-            echo "Exiting..."
-            exit 1
-        fi
+declare _MASTERTEMPLATE=debian-10
+declare _SYSTEMTEMPLATE=fedora-28-30
+declare _CONFIGDIR="$(dirname $0)/config/"
+
+declare __notifylevel="${__notifylevel:-2}"
+declare __qvm_run_options="${__qvm_run_options:-"-p --color-stderr=37"}"
+
+source $(dirname "$0")/qubes_functions
+set -e
+
+
+#function print_help() {
+#    echo "Usage: vm_mgmt (-c | -u | -d) -v (VMNAME|all)"
+#    echo "  where VNAME in usb,plus,media,dev,vault,printer"
+#    exit 1
+#}
+#
+#
+
+#function check_vm () {
+#    # check if vm exists - delete or exit
+#    declare _vmname=$1
+#    notify 2 "--check_vm: vmname:$_vmname"
+#    
+#    qvm-check $_vmname
+#    if [ "$?" -eq 0 ]; then
+#        read -p "  delete (n/Y)?" R
+#        if [ "$R" == "Y" ]; then 
+#            qvm-remove $_vmname
+#            if [ "$?" -ne 0 ]; then exit 1; fi
+#        else
+#            echo "Exiting..."
+#            exit 1
+#        fi
+#    fi
+#}
+
+
+
+function create_template () {
+    declare _template=$1
+    declare _master=$2
+    declare _software=$3
+    notify 1 "--create_template : _template:$_template, _software:$_software"
+
+    if [[ -z $(qube_exists $_template) ]]; then
+        notify 2 "--create_template : creating _template:$_template"
+        qvm-clone $_master $_template
+    else
+        notify 2 "--create_template : exists _template:$_template"
     fi
+
+    qube_update $_template
+    qube_install_software $_template $_software
+    qvm-sync-appmenus $_template
+    qvm-shutdown $_template
 }
+
 
 
 function config_user () {
-    local APPVM=$1
-    if [ "$DEBUG" ]; then echo "--config_user APPVM:$APPVM"; fi
-    
-    qvm-start $APPVM
-    qvm-run -p $APPVM "dconf write /org/gtk/settings/file-chooser/sort-directories-first true"
-    qvm-copy-to-vm $APPVM $CONFIGDIR/_vimrc
-    qvm-run -p $APPVM "mv /home/user/QubesIncoming/dom0/_vimrc ~/.vimrc"
-    qvm-run -p $APPVM "echo -e "\n\nPATH=\$PATH:~/bin\nalias rm=\"rm -i\"\n" >> ~/.bashrc"
-    qvm-run -p $APPVM "rm -rf ~/QubesIncoming"
+    declare _appvm=$1
+    declare _commands
 
+    notify 2 "--config_user _appvm:$_appvm"
+    qvm-start --skip-if-running $_appvm
+    sleep 1
+
+    # nautilus config
+    _commands=$(cat <<EOF
+        dconf write /org/gnome/nautilus/list-view/default-zoom-level \'small\'
+        dconf write /org/gnome/nautilus/list-view/use-tree-view true
+        dconf write /org/gnome/nautilus/preferences/default-folder-viewer \'list-view\'
+        dconf write /org/gtk/settings/file-chooser/expand-folders true
+        dconf write /org/gtk/settings/file-chooser/sort-directories-first true
+EOF
+)
+
+    qube_run_commands $_appvm "user" "$_commands"
+
+    declare _lines=$(cat dotfiles/__bashrc)
+    qube_append_file \
+        $_appvm \
+        "user" \
+        "/home/user/.bashrc" \
+        "${_lines//\"/\\\"}"
+
+    qube_copy_file \
+        $_appvm \
+        "user" \
+        "dotfiles/_vimrc" \
+        "/home/user/.vimrc"
+
+    qube_copy_file \
+        $_appvm \
+        "user" \
+        "dotfiles/_screenrc" \
+        "/home/user/.screenrc"
 }
 
 
-function update_template () {
-    local template=$1
-    if [ "$DEBUG" ]; then echo "--update_template: template:$template"; fi
+function config_firefox_addons () {
+    declare _appvm=$1
+    declare _commands
 
-    qvm-run -p -u root $template "apt-get -y update"
-    qvm-run -p -u root $template "apt-get -y upgrade"
-    qvm-run -p -u root $template "apt-get -y dist-upgrade"
-    qvm-run -p -u root $template "apt-get -y clean"
-    qvm-run -p -u root $template "apt-get -y remove"
-    qvm-run -p -u root $template "apt-get -y autoremove"
+    notify 2 "--config_firefox_addons _appvm:$_appvm"
+
+    _commands=$(cat <<EOF
+        firefox 
+            https://addons.mozilla.org/en-US/firefox/addon/noscript/ 
+            https://addons.mozilla.org/en-US/firefox/addon/adblock-plus/ 
+EOF
+    )
+    _commands=$(echo $_commands | tr '[:space:]' ' ')
+    qube_run_commands $_appvm "user" $_commands
 }
 
 
-function install_software () {
-    local template=$1
-    local software=$2
-    if [ "$DEBUG" ]; then echo "--install_software: template:$template, software:$software"; fi
 
-    softwarelist=$(echo $software | tr '&' ' ')
+function config_firefox () {
+    declare _appvm=$1
+    declare _commands
 
-    qvm-run -p -u root $template "apt-get -y install $softwarelist"
+    notify 2 "--config_firefox _appvm:$_appvm"
+
+    for _f in ls config/configFirefox/; do
+        qvm-copy-to-vm $_template $_f
+    done
+
+    qvm-run \
+        $__qvm_run_options \
+        -u "root" \
+        $_apppvm \
+        "/home/user/QubesIncoming/dom0/configFirefox"
+
+    qube_remove_incomming
 }
+
+
+
+#function update_template () {
+#    local template=$1
+#    if [ "$DEBUG" ]; then echo "--update_template: template:$template"; fi
+#
+#    qvm-run -p -u root $template "apt-get -y update"
+#    qvm-run -p -u root $template "apt-get -y upgrade"
+#    qvm-run -p -u root $template "apt-get -y dist-upgrade"
+#    qvm-run -p -u root $template "apt-get -y clean"
+#    qvm-run -p -u root $template "apt-get -y remove"
+#    qvm-run -p -u root $template "apt-get -y autoremove"
+#}
+
+
+#function install_software () {
+#    local template=$1
+#    local software=$2
+#    if [ "$DEBUG" ]; then echo "--install_software: template:$template, software:$software"; fi
+#
+#    softwarelist=$(echo $software | tr '&' ' ')
+#
+#    qvm-run -p -u root $template "apt-get -y install $softwarelist"
+#}
 
 
 function create_vpn () {
-    local VPNVM=sys-vpn-ro
-    #local SYSTEMPLATE=fedora-26
-    local SYSTEMPLATE=fedora-30
-    local APPTEMPLATE=debian-9-plus
-    local VPNAPPVM=vpn-dvm
+    declare _vpnvm=sys-vpn-ro
+    declare _apptemplate=debian-9-plus
+    declare _vpnappdvm=vpn-dvm
 
-    if [ "$DEBUG" ]; then echo "--create_vpn: VPNVM:$VPNVM, SYSTEMPLATE:$SYSTEMPLATE"; fi
-
-    check_vm $VPNVM
+    notify 2 "--create_vpn: _vpnvm:$_vpnvm, _systemplate:$_SYSTEMPLATE, _apptemplate:$_apptemplate"
 
     qvm-create --class AppVM \
-        --template $SYSTEMPLATE \
+        --template $_SYSTEMPLATE \
         --label red \
         --prop=maxmem=500 \
         --prop=memory=500 \
         --prop=netvm=sys-net \
         --prop=vcpus=2 \
         --prop=provides_network=True \
-        $VPNVM
-    qvm-copy-to-vm $VPNVM $CONFIGDIR/configure_vpn
-    qvm-run -p -u root $VPNVM "bash /home/user/QubesIncoming/dom0/configure_vpn"
-    qvm-run -p $VPNVM "rm -rf /home/user/QubesIncoming"
-    qvm-shutdown $VPNVM
-    sleep 5
+        $_vpnvm
+    qube_copy_file $_vpnvm \
+        "user" \
+        "$_CONFIGDIR/vpn.ovpn" \
+        "/tmp/vpn.ovpn"
+    qube_copy_file $_vpnvm \
+        "user" \
+        "$_CONFIGDIR/configure_vpn" \
+        "/tmp/configure_vpn"
+    qvm-run $__qvm_run_options \
+        -u root \
+        $_vpnvm \
+        "bash /tmp/configure_vpn"
+    qvm_wait_shutdown $_vpnvm
 
-
-    if [ "$DEBUG" ]; then echo "--create_vpn: VPNAPPVM:$VPNAPPVM"; fi
-    check_vm $VPNAPPVM
+    notify 2 "--create_vpn: _vpnappdvm:$_vpnappdvm"
 
     qvm-create --class AppVM \
-        --template $APPTEMPLATE \
+        --template $_apptemplate \
         --label red \
-        --prop=maxmem=8192 \
+        --prop=maxmem=2048 \
         --prop=memory=1024 \
-        --prop=netvm=$VPNVM \
-        $VPNAPPVM
-    qvm-prefs $VPNAPPVM template_for_dispvms True
-    qvm-features $VPNAPPVM appmenus-dispvm 1
-    qvm-start $VPNAPPVM
+        --prop=netvm=$_vpnvm \
+        $_vpnappdvm
+    qvm-prefs $_vpnappdvm template_for_dispvms True
+    qvm-features $_vpnappdvm appmenus-dispvm 1
+    qvm-start $_vpnappdvm
 
-    qvm-copy-to-vm $VPNAPPVM $CONFIGDIR/configure_vpn_client
-    echo "  configuring appvm $VPNAPPVM: install firefox addons, set/fix firefox homepage, set cache"
-    qvm-run -p -u root $VPNAPPVM "bash /home/user/QubesIncoming/dom0/configure_vpn_client"
-    qvm-run -p $VPNAPPVM "rm -rf /home/user/QubesIncoming"
-    qvm-shutdown $VPNAPPVM 
-    sleep 5
-    qvm-shutdown $VPNVM
+    qube_copy_file $_vpnappdvm \
+        "user" \ 
+        "$_CONFIGDIR/configure_vpn_client" \
+        "/tmp/configure_vpn_client"
+
+    notify 0 "  configuring appvm $_vpnappdvm: install firefox addons, set/fix firefox homepage, set cache"
+    qvm-run $__qvm_run_options \
+        -u root \
+        $_vpnappdvm \
+        "bash /tmp/configure_vpn_client"
+    qvm-shutdown $_vpnappdvm 
 }
 
 
-function create_template () {
-    local TEMPLATE=$1
-    local SOFTWARE=$2
-    if [ "$DEBUG" ]; then echo "--create_template : TEMPLATE:$TEMPLATE, SOFTWARE:$SOFTWARE"; fi
+#function create_min_appvms () {
+#    declare _template=$1
+#    declare _appvm
+#
+#    _appvm=fin
+#    notify 2 "--create_min_appvms _template:$_template, _appvm:$_appvm"
+#    
+#    qvm-create --class AppVM \
+#        --template $_template \
+#        --label purple \
+#        --prop=maxmem=1024 \
+#        --prop=memory=512 \
+#        --prop=netvm="" \
+#        $_appvm
+#    qvm-volume extend $_appvm:private 9216mb
+#    config_user $_appvm
+#    qvm-shutdown $_appvm
+#
+#    _appvm=files
+#    notify 2 "--create_min_appvms _template:$_template, _appvm:$_appvm"
+#    
+#    qvm-create --class AppVM \
+#        --template $_template \
+#        --label purple \
+#        --prop=maxmem=1024 \
+#        --prop=memory=512 \
+#        --prop=netvm="" \
+#        $_appvm
+#    qvm-volume extend $_appvm:private 50000mb
+#    config_user $_appvm
+#    qvm-shutdown $_appvm
+#}
 
-    qvm-clone $MASTERTEMPLATE $TEMPLATE
-    qvm-start $TEMPLATE
-    update_template $TEMPLATE
-    install_software $TEMPLATE $SOFTWARE
-    qvm-sync-appmenus $TEMPLATE
-    qvm-shutdown $TEMPLATE
-}
 
+function create_appvm () {
+    declare _appvm=$1
+    declare _configs=(${2//;/ })
 
-function create_min_appvms () {
-    local TEMPLATE=$1
+    # 0 type;1 template;2 lable;3 maxmem;4 memory;
+    # 5 storage;6 vCPUs;7 network;8 dvm"
 
-    #local APPVM=vault
-    #if [ "$DEBUG" ]; then echo "--create_min_appvms TEMPLATE:$TEMPLATE, APPVM:$APPVM"; fi
-    #check_vm $APPVM
-    #qvm-create --class AppVM --template $TEMPLATE --label black --prop=maxmem=1024 --prop=memory=512 --prop=netvm="" $APPVM
+    notify 2 "--create_appvm _appvm:$_appvm, _template:${_configs[1]}"
+    notify 2 "--create_appvm echo ${_configs[@]}"
+    
+    qvm-create \
+        --class ${_configs[0]} \
+        --template ${_configs[1]} \
+        --label ${_configs[2]} \
+        --prop=maxmem=${_configs[3]} \
+        --prop=memory=${_configs[4]} \
+        --prop=vcpus=${_configs[6]} \
+        $_appvm
 
-    local APPVM=fin
-    if [ "$DEBUG" ]; then echo "--create_min_appvms TEMPLATE:$TEMPLATE, APPVM:$APPVM"; fi
-    check_vm $APPVM
-    qvm-create --class AppVM \
-        --template $TEMPLATE \
-        --label purple \
-        --prop=maxmem=2048 \
-        --prop=memory=512 \
-        --prop=netvm="" \
-        $APPVM
-    qvm-volume extend $APPVM:private 9216mb
-    config_user $APPVM
-    qvm-shutdown $APPVM
+    qvm-prefs $_appvm qrexec_timeout 200
 
-    local APPVM=files
-    if [ "$DEBUG" ]; then echo "--create_min_appvms TEMPLATE:$TEMPLATE, APPVM:$APPVM"; fi
-    check_vm $APPVM
-    qvm-create --class AppVM \
-        --template $TEMPLATE \
-        --label purple \
-        --prop=maxmem=2048 \
-        --prop=memory=512 \
-        --prop=netvm="" \
-        $APPVM
-    qvm-volume extend $APPVM:private 20008mb
-    config_user $APPVM
-    qvm-run -p $APPVM "mkdir -p ~/bak/dom0"
-    qvm-shutdown $APPVM
+    if [[ ${_configs[5]} != "x" ]]; then
+        qvm-volume extend $_appvm:private ${_configs[5]}mb
+    fi
+    
+    if [[ ${_configs[7]} == "x" ]]; then
+        qvm-prefs $_appvm netvm ""
+    else
+        qvm-prefs $_appvm netvm ${_configs[7]} 
+    fi
+    
+    if [[ ${_configs[8]} -eq "1" ]]; then
+        qvm-prefs $_appvm template_for_dispvms True
+    fi
 }
 
 
 function create_dev_appvms() {
-    local TEMPLATE=$1
-    local APPVM=dev
+    declare _template=$1
+    declare _appvm
 
-    if [ "$DEBUG" ]; then echo "--create_dev_appvms TEMPLATE:$TEMPLATE, APPVM:$APPVM"; fi
-    check_vm $APPVM
+    _appvm=dev
+    notify 2 "--create_dev_appvms _template:$_template, _appvm:$_appvm"
 
     qvm-create --class AppVM \
-        --template $TEMPLATE \
+        --template $_template \
         --label yellow \
         --prop=maxmem=8192 \
         --prop=memory=1024 \
-        $APPVM
+        $_appvm
     qvm-volume extend $appvm:private 10240mb
 
-    qvm-start $APPVM
-    if [ "$DEBUG" ]; then echo "--create_dev_appvms configuring client"; fi
+    qvm-start $_appvm
+    config_user $_appvm
+    qvm-shutdown $_appvm 
 
-    qvm-copy-to-vm $APPVM $CONFIGDIR/configure_client
-    echo -e "\n  configuring $APPVM: install firefox addons, set firefox homepage, set cache"
-    qvm-run -p $APPVM "bash /home/user/QubesIncoming/dom0/configure_client"
-    qvm-run -p $APPVM "rm -rf /home/user/QubesIncoming"
-    qvm-shutdown $APPVM 
+    _appvm=learn
+    notify 2 "--create_dev_appvms _template:$_template, _appvm:$_appvm"
+
+    qvm-create --class AppVM \
+        --template $_template \
+        --label yellow \
+        --prop=maxmem=8192 \
+        --prop=memory=1024 \
+        $_appvm
+
+    qvm-start $_appvm
+    config_user $_appvm
+    qvm-shutdown $_appvm 
 }
 
 
 function create_media_appvms() {
-    local TEMPLATE=$1
+    declare _template=$1
+    declare _appvm
 
     # create media dvm
-    local appvm=media-dvm
-    if [ "$DEBUG" ]; then echo "--create_media_appvms TEMPLATE:$TEMPLATE, APPVM:$APPVM"; fi
-    check_vm $appvm
+    _appvm=media-dvm
+    notify 2 "--create_media__appvms _template:$_template, APPVM:$APPVM"
 
     qvm-create --class AppVM \
-        --template $TEMPLATE \
+        --template $_template \
         --label red \
         --prop=maxmem=8192 \
         --prop=memory=1024 \
-        $appvm
-    qvm-prefs $appvm template_for_dispvms True
-    qvm-features $appvm appmenus-dispvm 1
-    qvm-volume extend $appvm:private 8192mb
-    qvm-start $appvm
+        $_appvm
+    qvm-prefs $_appvm template_for_dispvms True
+    qvm-features $_appvm appmenus-dispvm 1
+    qvm-volume extend $_appvm:private 8192mb
 
-    qvm-copy-to-vm $appvm $CONFIGDIR/configure_client
-    echo "  configuring appvm $appvm: install firefox addons, set/fix firefox homepage, set cache"
-    qvm-run -p -u root $appvm "bash /home/user/QubesIncoming/dom0/configure_client"
-    qvm-run -p $appvm "rm -rf /home/user/QubesIncoming"
-    qvm-shutdown $appvm 
+    qvm-start $_appvm
+    config_user $_appvm
+    qvm-shutdown $_appvm 
 
     # create media
-    local appvm=media
-    check_vm $appvm
+    declare _appvm=media
+    check_vm $_appvm
 
     qvm-create --class AppVM \
-        --template $TEMPLATE \
+        --template $_template \
         --label green \
         --prop=maxmem=8192 \
         --prop=memory=1024 \
-        $appvm
-    qvm-volume extend $appvm:private 8192mb
+        $_appvm
+    qvm-volume extend $_appvm:private 8192mb
+
+    qvm-start $_appvm
+    config_user $_appvm
+    qvm-shutdown $_appvm 
 }
 
 
@@ -242,15 +380,15 @@ function install_printer_soft () {
     local TEMPLATE=$1
     local brotherinst=linux-brprinter-installer-2.2.1-1
 
-    if [ "$DEBUG" ]; then echo "--install_printer_soft TEMPLATE:$TEMPLATE"; fi
+    notify 1 "--install_printer_soft TEMPLATE:$TEMPLATE"
     sleep 5 # wait for install to complete
 
     qvm-shutdown $TEMPLATE
     qvm-prefs $TEMPLATE netvm sys-firewall
     qvm-start $TEMPLATE
 
-    echo "qvm-copy-to-vm $TEMPLATE $CONFIGDIR/$brotherinst.gz"
-    qvm-copy-to-vm $TEMPLATE $CONFIGDIR/$brotherinst.gz
+    echo "qvm-copy-to-vm $TEMPLATE $_CONFIGDIR/$brotherinst.gz"
+    qvm-copy-to-vm $TEMPLATE $_CONFIGDIR/$brotherinst.gz
     echo "--Install printer soft: model number MFCL2710DW"
     qvm-run -p $TEMPLATE "gunzip /home/user/QubesIncoming/dom0/$brotherinst.gz"
     qvm-run -p -u root $TEMPLATE "bash /home/user/QubesIncoming/dom0/$brotherinst"
@@ -275,16 +413,16 @@ function create_printer_appvms() {
     qvm-features $appvm appmenus-dispvm 1
 
     qvm-start $appvm
-    qvm-copy-to-vm $appvm $CONFIGDIR/scanBro
+    qvm-copy-to-vm $appvm $_CONFIGDIR/scanBro
     qvm-run -p -u root $appvm "cp /home/user/QubesIncoming/dom0/scanBro /usr/local/bin/"
     qvm-run -p -u root $appvm "chmod +x /usr/local/bin/scanBro"
-    qvm-copy-to-vm $appvm $CONFIGDIR/printBro
+    qvm-copy-to-vm $appvm $_CONFIGDIR/printBro
     qvm-run -p -u root $appvm "cp /home/user/QubesIncoming/dom0/printBro /usr/local/bin/"
     qvm-run -p -u root $appvm "chmod +x /usr/local/bin/printBro"
-    qvm-copy-to-vm $appvm $CONFIGDIR/combine_doublesided
+    qvm-copy-to-vm $appvm $_CONFIGDIR/combine_doublesided
     qvm-run -p -u root $appvm "cp /home/user/QubesIncoming/dom0/combine_doublesided /usr/local/bin/"
     qvm-run -p -u root $appvm "chmod +x /usr/local/bin/combine_doublesided"
-    qvm-copy-to-vm $appvm $CONFIGDIR/img2pdf
+    qvm-copy-to-vm $appvm $_CONFIGDIR/img2pdf
     qvm-run -p -u root $appvm "cp /home/user/QubesIncoming/dom0/img2pdf /usr/local/bin/"
     qvm-run -p -u root $appvm "chmod +x /usr/local/bin/img2pdf"
 
@@ -339,10 +477,10 @@ function create_plus_appvms() {
 
 
 function create_gpg () {
-    local SYSTEMPLATE=fedora-30
+    local _systemplate=fedora-30
     local APPNAME=gpg
     qvm-create --class AppVM \
-        --template $MASTERTEMPLATE \
+        --template $_systemplate \
         --label orange \
         --prop=maxmem=4000 \
         --prop=memory=400 \
@@ -393,72 +531,107 @@ function make_win_vm () {
 
 
 
-# action: create, update, delete
-ACTION=''
-VM=''
-while getopts "cudv:" OPTION; do
-    case $OPTION in
-        c)
-            if [[ $ACTION == '' ]]; then
-                ACTION=CREATE
-            else
-                echo "error - only one action"
-                print_help
-                exit 1
-            fi
-            ;;
-        u)
-            if [[ $ACTION == '' ]]; then
-                ACTION=UPDATE
-            else
-                echo "error - only one action"
-                print_help
-                exit 1
-            fi
-            ;;
-        d)
-            if [[ $ACTION == '' ]]; then
-                ACTION=DELETE
-            else
-                echo "error - only one action"
-                print_help
-                exit 1
-            fi
-            ;;
-        v)
-            if [[ $VM == '' ]]; then
-                VM=$OPTARG
-            else
-                echo "error - only one vm"
-                print_help
-                exit 1
-            fi
-            ;;
-        *)
-            print_help
-            exit 1
-            ;;
-    esac
-done
+function create_min () {
+    declare _vm
 
-if [ "$ACTION" == "" ] || [ "$VM" == "" ]; then
-    echo "error - specify action and vm"
-    print_help
-    exit 1
-fi
+    # min
+    TEMPLATE=${VM_TEMPLATE_NAMES[min]}
+    SOFTWARE=${VM_SOFT[min]}
+    create_template $TEMPLATE $_MASTERTEMPLATE $SOFTWARE
+
+    for _vm in \
+        files \
+        fin \
+        gpg;
+    do
+        create_appvm $_vm ${VM_CONFIG[$_vm]}
+        config_user $_vm
+    done
+
+    # files setup
+    for _f in \
+        appendPDF \
+        doublePDF \
+        img2pdf \
+        randomChars.py; 
+    do
+        qube_copy_file \
+            files \
+            "root" \
+            "utilities/$_f" \
+            "/usr/local/bin/$_f"
+    done
+
+    # fin setup
+    for _f in \
+        appendPDF \
+        img2pdf \
+        mntv \
+        randomChars.py \
+        updateVault \
+        updateVault.secrets; 
+    do
+        qube_copy_file \
+            fin \
+            "root" \
+            "utilities/$_f" \
+            "/usr/local/bin/$_f"
+    done
+
+    # gpg setup
+    qvm-run \
+        $__qvm_run_options \
+        -u root \
+        gpg \
+        "sudo apt-get install qubes-gpg-split"
+
+    for _vm in files fin gpg; do
+        qube_remove_incomming $_vm
+        qvm-shutdown $_vm
+    done
+}
+
+
+
+function main () {
+    create_min
+}
+
 
 
 declare -A VM_SOFT
 declare -A VM_TEMPLATE_NAMES
+declare -A VM_CONFIG
 
 VM_TEMPLATE_NAMES=(
-    [plus]=debian-9-plus
-    [media]=debian-9-media
-    [min]=debian-9-min
-    [dev]=debian-9-dev
-    [printer]=debian-9-printer
-    [gis]=debian-9-gis
-    [master]=debian-9
+    [master]=$_MASTERTEMPLATE
+    [system]=$_SYSTEMTEMPLATE
+    [dev]=$_MASTERTEMPLATE-dev
+    [media]=$_MASTERTEMPLATE-media
+    [min]=$_MASTERTEMPLATE-min
+    [plus]=$_MASTERTEMPLATE-plus
+    [printer]=$_MASTERTEMPLATE-printer
+    [usb]=$_SYSTEMTEMPLATE-usb
+    [zoom]=$_MASTERTEMPLATE-zoom
+    )
+
+VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
+    [dev]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10240;2;sys-firewall;0"
+    [files]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;800;400;152576;1;x;0"
+    [fin]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;1024;400;9216;1;x;0"
+    [gpg]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;800;400;x;1;x;0"
+    [media]="AppVM;${VM_TEMPLATE_NAMES[media]};green;8192;1024;30720;2;sys-firewall;0"
+    [media-dvm]="AppVM;${VM_TEMPLATE_NAMES[media]};red;8192;820;dvm;8192;2;sys-firewall;1"
+    [epub]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;2000;500;50176;1;sys-firewall;0"
+    [plus-dvm]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;4096;400;5120;2;sys-firewall;1"
+    [printer-dvm]="AppVM;${VM_TEMPLATE_NAMES[printer]};red;974;350;x;1;sys-firewall;1"
+    [zoom]="AppVM;${VM_TEMPLATE_NAMES[zoom]};red;4000;400;x;3;sys-firewall;1"
+    [usb]="AppVM;${VM_TEMPLATE_NAMES[zoom]};red;4000;2000;22528;3;sys-firewall;0"
+    [vpn-dvm]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;4000;400;9216;2;sys-vpn-ro;1"
+    [vpn-dvm-big]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;4000;400;28672;2;sys-vpn-ro;1"
+    [sys-vpn-ro]="AppVM;${VM_TEMPLATE_NAMES[system]};red;500;400;x;1;sys-net;0"
+    [work]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;20480;1;sys-firewall;0"
+    [fedora-dvm]="AppVM;${VM_TEMPLATE_NAMES[system]};red;2000;600;x;2;sys-firewall;1"
     )
 
 VM_SOFT=( 
@@ -469,7 +642,6 @@ VM_SOFT=(
         deluge
         eog
         gimp
-        gimp-plugin-registry
         git
         gnucash
         inkscape
@@ -477,13 +649,22 @@ VM_SOFT=(
         lame
         libdbd-sqlite3
         libreoffice
+        lyx 
         nautilus
         pdftk
         python3-pip
+        remmina
         s3cmd
         screen
+        texlive 
+        texlive-fonts-extra 
+        texlive-fonts-recommended 
+        texlive-latex-base 
+        texlive-latex-extra 
+        texlive-latex-recommended 
+        texmaker
+        texworks 
         tmux
-        remmina
         vlc
         xournal
         xsane
@@ -512,7 +693,6 @@ EOF
     [dev]=$(tr -s [:space:] '&' <<EOF
         build-essential
         chromium
-        eog
         git
         libdbd-sqlite3
         libffi-dev
@@ -537,145 +717,204 @@ EOF
     )
 )
 
-if [ "$DEBUG" ]; then echo "--VM:$VM, ACTION:$ACTION"; fi
 
-case $ACTION in
-    CREATE)
-        case $VM in
-            min | vault)
-                if [ "$DEBUG" ]; then echo "--creating min/vault"; fi
-                TEMPLATE=${VM_TEMPLATE_NAMES[min]}
-                SOFTWARE=${VM_SOFT[min]}
-
-                create_template $TEMPLATE $SOFTWARE
-                create_min_appvms ${VM_TEMPLATE_NAMES[min]}
+function old () {
+    # action: create, update, delete
+    ACTION=''
+    VM=''
+    while getopts "cudv:" OPTION; do
+        case $OPTION in
+            c)
+                if [[ $ACTION == '' ]]; then
+                    ACTION=CREATE
+                else
+                    echo "error - only one action"
+                    print_help
+                        exit 1
+                fi
                 ;;
-            media)
-                if [ "$DEBUG" ]; then echo "--creating media"; fi
-                TEMPLATE=${VM_TEMPLATE_NAMES[media]}
-                SOFTWARE=${VM_SOFT[media]}
-
-                create_template $TEMPLATE $SOFTWARE
-                create_media_appvms ${VM_TEMPLATE_NAMES[media]}
+            u)
+                if [[ $ACTION == '' ]]; then
+                    ACTION=UPDATE
+                else
+                    echo "error - only one action"
+                    print_help
+                    exit 1
+                fi
                 ;;
-            dev)
-                if [ "$DEBUG" ]; then echo "--creating dev"; fi
-                TEMPLATE=${VM_TEMPLATE_NAMES[dev]}
-                SOFTWARE=${VM_SOFT[dev]}
-
-                create_template $TEMPLATE $SOFTWARE
-                create_dev_appvms ${VM_TEMPLATE_NAMES[dev]}
+            d)
+                if [[ $ACTION == '' ]]; then
+                    ACTION=DELETE
+                else
+                    echo "error - only one action"
+                    print_help
+                    exit 1
+                fi
                 ;;
-            plus)
-                if [ "$DEBUG" ]; then echo "--creating plus"; fi
-                TEMPLATE=${VM_TEMPLATE_NAMES[plus]}
-                SOFTWARE=${VM_SOFT[plus]}
-                
-                create_template $TEMPLATE $SOFTWARE
-                create_plus_appvms $TEMPLATE
-                ;;
-            printer)
-                if [ "$DEBUG" ]; then echo "--creating printer"; fi
-                TEMPLATE=${VM_TEMPLATE_NAMES[printer]}
-                SOFTWARE=${VM_SOFT[printer]}
-                
-                create_template $TEMPLATE $SOFTWARE
-                install_printer_soft $TEMPLATE 
-                create_printer_appvms $TEMPLATE
-                ;;
-            gpg)
-                if [ "$DEBUG" ]; then echo "--creating gpg"; fi
-                create_gpg
-                ;;
-            vpn)
-                if [ "$DEBUG" ]; then echo "--creating vpn"; fi
-                create_vpn
-                ;;
-            usb)
-                if [ "$DEBUG" ]; then echo "--creating usb"; fi
-                sudo qubesctl state.sls qvm.sys-usb
-                sudo qubesctl state.sls qvm.usb-keyboard
-                qvm-prefs sys-usb autostart False
-                echo -e "\n\n##############################\nSYS-USB\nRemove keyboard PCI from qube"
-                read R
-                ;;
-            win)
-                make_win_vm
+            v)
+                if [[ $VM == '' ]]; then
+                    VM=$OPTARG
+                else
+                    echo "error - only one vm"
+                    print_help
+                    exit 1
+                fi
                 ;;
             *)
-                echo "ERROR: create: unknown vm: $VM"
+                print_help
                 exit 1
                 ;;
         esac
-        ;;
-    UPDATE)
-        case $VM in
-            min | vault)
-                if [ "$DEBUG" ]; then echo "--updating min/vault"; fi
-                TEMPLATE=${VM_TEMPLATE_NAMES[min]}
-                SOFTWARE=${VM_SOFT[min]}
-                qvm-start $TEMPLATE
-                update_template $TEMPLATE
-                install_software $TEMPLATE $SOFTWARE
-                qvm-shutdown $TEMPLATE
-                ;;
-            media)
-                if [ "$DEBUG" ]; then echo "--updating media"; fi
-                TEMPLATE=${VM_TEMPLATE_NAMES[media]}
-                SOFTWARE=${VM_SOFT[media]}
-                qvm-start $TEMPLATE
-                update_template $TEMPLATE
-                install_software $TEMPLATE $SOFTWARE
-                qvm-shutdown $TEMPLATE
-                ;;
-            dev)
-                if [ "$DEBUG" ]; then echo "--updating dev"; fi
-                TEMPLATE=${VM_TEMPLATE_NAMES[dev]}
-                SOFTWARE=${VM_SOFT[dev]}
-                qvm-start $TEMPLATE
-                update_template $TEMPLATE
-                install_software $TEMPLATE $SOFTWARE
-                qvm-shutdown $TEMPLATE
-                ;;
-            plus)
-                if [ "$DEBUG" ]; then echo "--updating plus"; fi
-                TEMPLATE=${VM_TEMPLATE_NAMES[plus]}
-                SOFTWARE=${VM_SOFT[plus]}
-                qvm-start $TEMPLATE
-                update_template $TEMPLATE
-                install_software $TEMPLATE $SOFTWARE
-                qvm-shutdown $TEMPLATE
-                ;;
-            printer)
-                if [ "$DEBUG" ]; then echo "--updating printer"; fi
-                TEMPLATE=${VM_TEMPLATE_NAMES[printer]}
-                SOFTWARE=${VM_SOFT[printer]}
-                qvm-start $TEMPLATE
-                update_template $TEMPLATE
-                install_software $TEMPLATE $SOFTWARE
-                qvm-shutdown $TEMPLATE
-                ;;
-            all)
-                if [ "$DEBUG" ]; then echo "--updating all"; fi
-                for VM in "${!VM_TEMPLATE_NAMES[@]}"; do
-                    TEMPLATE=${VM_TEMPLATE_NAMES[$VM]}
-                    SOFTWARE=${VM_SOFT[$VM]}
+    done
+
+    if [ "$ACTION" == "" ] || [ "$VM" == "" ]; then
+        echo "error - specify action and vm"
+        print_help
+        exit 1
+    fi
+
+
+
+    if [ "$DEBUG" ]; then echo "--VM:$VM, ACTION:$ACTION"; fi
+
+    case $ACTION in
+        CREATE)
+            case $VM in
+                min | vault)
+                    if [ "$DEBUG" ]; then echo "--creating min/vault"; fi
+                    TEMPLATE=${VM_TEMPLATE_NAMES[min]}
+                    SOFTWARE=${VM_SOFT[min]}
+
+                    create_template $TEMPLATE $SOFTWARE
+                    create_min_appvms ${VM_TEMPLATE_NAMES[min]}
+                    ;;
+                media)
+                    if [ "$DEBUG" ]; then echo "--creating media"; fi
+                    TEMPLATE=${VM_TEMPLATE_NAMES[media]}
+                    SOFTWARE=${VM_SOFT[media]}
+
+                    create_template $TEMPLATE $SOFTWARE
+                    create_media_appvms ${VM_TEMPLATE_NAMES[media]}
+                    ;;
+                dev)
+                    if [ "$DEBUG" ]; then echo "--creating dev"; fi
+                    TEMPLATE=${VM_TEMPLATE_NAMES[dev]}
+                    SOFTWARE=${VM_SOFT[dev]}
+
+                    create_template $TEMPLATE $SOFTWARE
+                    create_dev_appvms ${VM_TEMPLATE_NAMES[dev]}
+                    ;;
+                plus)
+                    if [ "$DEBUG" ]; then echo "--creating plus"; fi
+                    TEMPLATE=${VM_TEMPLATE_NAMES[plus]}
+                    SOFTWARE=${VM_SOFT[plus]}
+                    
+                    create_template $TEMPLATE $SOFTWARE
+                    create_plus_appvms $TEMPLATE
+                    ;;
+                printer)
+                    if [ "$DEBUG" ]; then echo "--creating printer"; fi
+                    TEMPLATE=${VM_TEMPLATE_NAMES[printer]}
+                    SOFTWARE=${VM_SOFT[printer]}
+                    
+                    create_template $TEMPLATE $SOFTWARE
+                    install_printer_soft $TEMPLATE 
+                    create_printer_appvms $TEMPLATE
+                    ;;
+                gpg)
+                    if [ "$DEBUG" ]; then echo "--creating gpg"; fi
+                    create_gpg
+                    ;;
+                vpn)
+                    if [ "$DEBUG" ]; then echo "--creating vpn"; fi
+                    create_vpn
+                    ;;
+                usb)
+                    if [ "$DEBUG" ]; then echo "--creating usb"; fi
+                    sudo qubesctl state.sls qvm.sys-usb
+                    sudo qubesctl state.sls qvm.usb-keyboard
+                    qvm-prefs sys-usb autostart False
+                    echo -e "\n\n##############################\nSYS-USB\nRemove keyboard PCI from qube"
+                    read R
+                    ;;
+                win)
+                    make_win_vm
+                    ;;
+                *)
+                    echo "ERROR: create: unknown vm: $VM"
+                    exit 1
+                    ;;
+            esac
+            ;;
+        UPDATE)
+            case $VM in
+                min | vault)
+                    if [ "$DEBUG" ]; then echo "--updating min/vault"; fi
+                    TEMPLATE=${VM_TEMPLATE_NAMES[min]}
+                    SOFTWARE=${VM_SOFT[min]}
                     qvm-start $TEMPLATE
                     update_template $TEMPLATE
                     install_software $TEMPLATE $SOFTWARE
                     qvm-shutdown $TEMPLATE
-                done
-                ;;
-            *)
-                echo "ERROR: create: unknown vm: $VM"
-                exit 1
-                ;;
-        esac
-        ;;
-    DELETE)
-        ;;
-esac
-echo "...done"
+                    ;;
+                media)
+                    if [ "$DEBUG" ]; then echo "--updating media"; fi
+                    TEMPLATE=${VM_TEMPLATE_NAMES[media]}
+                    SOFTWARE=${VM_SOFT[media]}
+                    qvm-start $TEMPLATE
+                    update_template $TEMPLATE
+                    install_software $TEMPLATE $SOFTWARE
+                    qvm-shutdown $TEMPLATE
+                    ;;
+                dev)
+                    if [ "$DEBUG" ]; then echo "--updating dev"; fi
+                    TEMPLATE=${VM_TEMPLATE_NAMES[dev]}
+                    SOFTWARE=${VM_SOFT[dev]}
+                    qvm-start $TEMPLATE
+                    update_template $TEMPLATE
+                    install_software $TEMPLATE $SOFTWARE
+                    qvm-shutdown $TEMPLATE
+                    ;;
+                plus)
+                    if [ "$DEBUG" ]; then echo "--updating plus"; fi
+                    TEMPLATE=${VM_TEMPLATE_NAMES[plus]}
+                    SOFTWARE=${VM_SOFT[plus]}
+                    qvm-start $TEMPLATE
+                    update_template $TEMPLATE
+                    install_software $TEMPLATE $SOFTWARE
+                    qvm-shutdown $TEMPLATE
+                    ;;
+                printer)
+                    if [ "$DEBUG" ]; then echo "--updating printer"; fi
+                    TEMPLATE=${VM_TEMPLATE_NAMES[printer]}
+                    SOFTWARE=${VM_SOFT[printer]}
+                    qvm-start $TEMPLATE
+                    update_template $TEMPLATE
+                    install_software $TEMPLATE $SOFTWARE
+                    qvm-shutdown $TEMPLATE
+                    ;;
+                all)
+                    if [ "$DEBUG" ]; then echo "--updating all"; fi
+                    for VM in "${!VM_TEMPLATE_NAMES[@]}"; do
+                        TEMPLATE=${VM_TEMPLATE_NAMES[$VM]}
+                        SOFTWARE=${VM_SOFT[$VM]}
+                        qvm-start $TEMPLATE
+                        update_template $TEMPLATE
+                        install_software $TEMPLATE $SOFTWARE
+                        qvm-shutdown $TEMPLATE
+                    done
+                    ;;
+                *)
+                    echo "ERROR: create: unknown vm: $VM"
+                    exit 1
+                    ;;
+            esac
+            ;;
+        DELETE)
+            ;;
+    esac
+    echo "...done"
+}
 
-
+main 
 
