@@ -654,6 +654,7 @@ VM_SOFT=(
         pdftk
         python3-pip
         remmina
+        rsync
         s3cmd
         screen
         texlive 
@@ -673,6 +674,7 @@ EOF
     [media]=$(tr -s [:space:] '&' <<EOF
         chromium
         eog
+        rsync
         kodi
         libavcodec-extra
         nautilus
@@ -682,6 +684,7 @@ EOF
     [min]=$(tr -s [:space:] '&' <<EOF
         eog
         evince
+        rsync
         gnucash
         gocryptfs
         libdbd-sqlite3
@@ -694,6 +697,8 @@ EOF
         build-essential
         chromium
         git
+        rsync
+        gnucash
         libdbd-sqlite3
         libffi-dev
         libssl-dev
