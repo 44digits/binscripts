@@ -230,40 +230,6 @@ function create_vpn () {
 }
 
 
-#function create_min_appvms () {
-#    declare _template=$1
-#    declare _appvm
-#
-#    _appvm=fin
-#    notify 2 "--create_min_appvms _template:$_template, _appvm:$_appvm"
-#    
-#    qvm-create --class AppVM \
-#        --template $_template \
-#        --label purple \
-#        --prop=maxmem=1024 \
-#        --prop=memory=512 \
-#        --prop=netvm="" \
-#        $_appvm
-#    qvm-volume extend $_appvm:private 9216mb
-#    config_user $_appvm
-#    qvm-shutdown $_appvm
-#
-#    _appvm=files
-#    notify 2 "--create_min_appvms _template:$_template, _appvm:$_appvm"
-#    
-#    qvm-create --class AppVM \
-#        --template $_template \
-#        --label purple \
-#        --prop=maxmem=1024 \
-#        --prop=memory=512 \
-#        --prop=netvm="" \
-#        $_appvm
-#    qvm-volume extend $_appvm:private 50000mb
-#    config_user $_appvm
-#    qvm-shutdown $_appvm
-#}
-
-
 function create_appvm () {
     declare _appvm=$1
     declare _configs=(${2//;/ })
@@ -298,41 +264,6 @@ function create_appvm () {
     if [[ ${_configs[8]} -eq "1" ]]; then
         qvm-prefs $_appvm template_for_dispvms True
     fi
-}
-
-
-function create_dev_appvms() {
-    declare _template=$1
-    declare _appvm
-
-    _appvm=dev
-    notify 2 "--create_dev_appvms _template:$_template, _appvm:$_appvm"
-
-    qvm-create --class AppVM \
-        --template $_template \
-        --label yellow \
-        --prop=maxmem=8192 \
-        --prop=memory=1024 \
-        $_appvm
-    qvm-volume extend $appvm:private 10240mb
-
-    qvm-start $_appvm
-    config_user $_appvm
-    qvm-shutdown $_appvm 
-
-    _appvm=learn
-    notify 2 "--create_dev_appvms _template:$_template, _appvm:$_appvm"
-
-    qvm-create --class AppVM \
-        --template $_template \
-        --label yellow \
-        --prop=maxmem=8192 \
-        --prop=memory=1024 \
-        $_appvm
-
-    qvm-start $_appvm
-    config_user $_appvm
-    qvm-shutdown $_appvm 
 }
 
 
@@ -493,40 +424,31 @@ function create_gpg () {
 }
 
 
-function make_win_vm () {
-    WINVMNAME=win7
-    WINCD=/home/user/iso/win7.iso
-    # https://www.qubes-os.org/doc/windows-vm/#qubes-40---windows-vm-installation
 
-    qvm-create --class StandaloneVM \
-        --label red \
-        --property virt_mode=hvm \
-        $WINVMNAME
-    qvm-prefs $WINVMNAME memory 8192
-    qvm-prefs $WINVMNAME maxmem 8192
-    qvm-prefs $WINVMNAME kernel ''
-    qvm-volume extend $WINVMNAME:root 25g
-    qvm-prefs $WINVMNAME debug true
-    qvm-features $WINVMNAME video-model cirrus
+function create_dev () {
+    declare _vm
 
-    qvm-start --cdrom=personal:$WINCD $WINVMNAME
+    TEMPLATE=${VM_TEMPLATE_NAMES[dev]}
+    SOFTWARE=${VM_SOFT[dev]}
+    create_template $TEMPLATE $_MASTERTEMPLATE $SOFTWARE
 
-    echo "make_win_vm: Windows VM started... waiting"
-    read X
+    _vm=dev
+    create_appvm $_vm ${VM_CONFIG[$_vm]}
+    config_user $_vm
 
-    qvm-clone $WINVMNAME win7-backinstalled
-
-    qvm-features --unset $WINVMNAME video-model
-    qvm-prefs $WINVMNAME qrexec_timeout 300
-
-    #Install qubes tools:
-    sudo qubes-dom0-update qubes-windows-tools
-    qvm-start $WINVMNAME --install-windows-tools
-
-    echo "make_win_vm: Windows VM installing qubes tools... waiting"
-    read X
-
-    qvm-prefs -s $WINVMNAME debug false
+    # files setup
+    for _f in \
+        appendPDF \
+        doublePDF \
+        img2pdf \
+        randomChars.py; 
+    do
+        qube_copy_file \
+            dev \
+            "root" \
+            "utilities/$_f" \
+            "/usr/local/bin/$_f"
+    done
 }
 
 
