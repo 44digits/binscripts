@@ -11,12 +11,28 @@ read -r -d '' _filelist <<EOF
     qube_admin
     qube_backup
     qube_blockit
+    qube_copy_admin
     qube_hostnames
     qube_launcher
     qube_make_gis
+    qube_make_win
     qube_s3vault
     qube_s3vault.secrets
     qubes_functions
+    qvm-portfwd-iptables
+    config/brother_instructions_mfcl2710dwp.pdf
+    config/configure_client
+    config/configure_vpn
+    config/configure_vpn_client
+    config/go_install
+    config/linux-brprinter-installer-2.2.1-1.gz
+    config/python3_install
+    config/vpn.ovpn
+    config/vpn-startup
+    config/configFirefox/autoconfig.js
+    config/configFirefox/configFirefox
+    config/configFirefox/firefox.cfg
+    config/configFirefox/policies.json
 EOF
 
 for _f in $_filelist; do
