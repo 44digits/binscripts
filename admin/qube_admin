@@ -143,8 +143,6 @@ function config_firefox () {
         -u "root" \
         $_apppvm \
         "/home/user/QubesIncoming/dom0/configFirefox"
-
-    qube_remove_incomming
 }
 
 
@@ -432,22 +430,39 @@ function create_dev () {
     SOFTWARE=${VM_SOFT[dev]}
     create_template $TEMPLATE $_MASTERTEMPLATE $SOFTWARE
 
-    _vm=dev
-    create_appvm $_vm ${VM_CONFIG[$_vm]}
-    config_user $_vm
-
-    # files setup
-    for _f in \
-        appendPDF \
-        doublePDF \
-        img2pdf \
-        randomChars.py; 
+    for _vm in \
+        dev \
+        learn;
     do
-        qube_copy_file \
-            dev \
-            "root" \
-            "utilities/$_f" \
-            "/usr/local/bin/$_f"
+        create_appvm $_vm ${VM_CONFIG[$_vm]}
+        config_user $_vm
+        config_firefox $_vm
+
+        for _f in \
+            appendPDF \
+            doublePDF \
+            img2pdf \
+            randomChars.py;
+        do
+            qube_copy_file \
+                $_vm \
+                "root" \
+                "utilities/$_f" \
+                "/usr/local/bin/$_f"
+        done
+        for _f in \
+            python3_install \
+            go_install; 
+        do
+            qube_copy_file \
+                $_vm \
+                "user" \
+                "config/$_f" \
+                "/home/user/$_f"
+        done
+
+        qube_remove_incomming $_vm
+        qvm-shutdown $_vm
     done
 }
 
@@ -507,7 +522,11 @@ function create_min () {
         gpg \
         "sudo apt-get install qubes-gpg-split"
 
-    for _vm in files fin gpg; do
+    for _vm in \
+        files \
+        fin \
+        gpg; \
+    do
         qube_remove_incomming $_vm
         qvm-shutdown $_vm
     done
@@ -538,7 +557,8 @@ VM_TEMPLATE_NAMES=(
     )
 
 VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
-    [dev]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10240;2;sys-firewall;0"
+    [dev]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;sys-firewall;0"
+    [learn]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;sys-firewall;0"
     [files]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;800;400;152576;1;x;0"
     [fin]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;1024;400;9216;1;x;0"
     [gpg]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;800;400;x;1;x;0"
