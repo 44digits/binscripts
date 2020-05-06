@@ -28,7 +28,6 @@ EOF
 
 __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
     ..............................
-    .plugins
     <pass>
     <search>
     <url>
@@ -37,6 +36,7 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
     gmail.com
     google.com
     linkedin.com
+    plugins.com
     privateemail.com
     workflowy.com
     ..............................
@@ -267,6 +267,7 @@ function unlockit () {
 function lockit () {
     while ! mkdir $__lockme 2>/dev/null; do
         notify 2 "lockit: waiting"
+        sleep 1
     done
 
     notify 2 "lockit: lock made"
@@ -331,7 +332,7 @@ function launcher_main () {
                 safe_execute firefox_work
                 ;;
 
-            .plugins)
+            plugins.com)
                 safe_execute firefox_plugins
                 ;;
 
