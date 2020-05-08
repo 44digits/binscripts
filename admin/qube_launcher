@@ -122,6 +122,7 @@ function firefox_plugins () {
         https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/
         https://addons.mozilla.org/en-US/firefox/addon/privacy-badger17/
         https://addons.mozilla.org/en-US/firefox/addon/printable-the-print-doctor/
+        https://addons.mozilla.org/en-US/firefox/addon/user-agent-string-switcher/
 EOF
     )
     qvm_firefox $__DVM "$_urls" &
