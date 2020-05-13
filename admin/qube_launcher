@@ -20,9 +20,12 @@ __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
     files
     fin
     gpg
+    media
     tex
     transfer
+    usb03
     work
+    zoom-conference
 EOF
 )
 
