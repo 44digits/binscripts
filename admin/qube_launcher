@@ -299,7 +299,7 @@ function launcher_main () {
                         qvm-run \
                         $__qvm_run_options \
                         gpg \
-                        "\"gnome-terminal --geometry=115x10 -e 'bash -c \\\"grep $_passstring logins_2020;bash\\\" '\""
+                        "\"gnome-terminal --geometry=115x10 -e 'bash -c \\\"grep -i $_passstring logins_2020;bash\\\" '\""
 
                 fi
                 ;;
