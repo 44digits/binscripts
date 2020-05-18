@@ -583,6 +583,7 @@ VM_SOFT=(
         chromium
         deluge
         eog
+        curl
         gimp
         git
         gnucash
@@ -639,6 +640,7 @@ EOF
         build-essential
         chromium
         git
+        curl
         rsync
         gnucash
         libdbd-sqlite3
