@@ -33,6 +33,9 @@ read -r -d '' _filelist <<EOF
     config/configFirefox/configFirefox
     config/configFirefox/firefox.cfg
     config/configFirefox/policies.json
+    config/congy/congy.config.secret
+    config/congy/group_rdp_congy.remmina.secret
+    config/congy/openfortivpn.service
 EOF
 
 for _f in $_filelist; do
