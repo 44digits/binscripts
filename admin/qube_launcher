@@ -46,6 +46,7 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
     calibre
     chromium
     classicFM
+    congy
     firefox
     gedit
     gnome-terminal
@@ -384,6 +385,11 @@ function launcher_main () {
                 fi
                 ;;
             # apps for specific vms
+            congy)
+                safe_execute_vm congy \
+                    qvm-run $__qvm_run_options congy "remmina"
+                ;;
+
             hangouts)
                 safe_execute_vm usb03 \
                     qvm_chrome usb03 "https://hangouts.google.com"
