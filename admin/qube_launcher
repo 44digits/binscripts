@@ -8,7 +8,7 @@
 
 source $(dirname "$0")/qubes_functions
 
-__DIALOGHEIGHT=750
+__DIALOGHEIGHT=770
 __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
     ..............................
     fedora-30-dvm 
@@ -16,7 +16,9 @@ __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
     plus-dvm
     printer-dvm
     ..............................
+    congy5
     dev
+    email
     files
     fin
     gpg
@@ -55,6 +57,7 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
     kodi
     nautilus
     postTrello
+    thunder
     xterm
     ..............................
     scan
@@ -400,6 +403,10 @@ function launcher_main () {
                     qvm-run $__qvm_run_options epub "calibre"
                 ;;
                 
+            thunder)
+                safe_execute_vm email \
+                    qvm-run $__qvm_run_options email "thunderbird_timefix"
+                ;;
             kodi)
                 safe_execute_vm media \
                     qvm-run $__qvm_run_options media "kodi"
@@ -425,10 +432,12 @@ function launcher_main () {
                 qube_shutdown
                 ;;
             startup)
-                safe_execute "qvm_firefox $__DVM \"gmail.com\""
+                safe_execute_vm email \
+                    qvm-run $__qvm_run_options email "thunderbird_timefix"
                 safe_execute firefox_plugins
+                safe_execute_vm congy \
+                    qvm-run $__qvm_run_options congy "gnome-terminal"
                 safe_execute firefox_work
-                safe_execute chrome_linkedin
                 ;;
 
             *)
