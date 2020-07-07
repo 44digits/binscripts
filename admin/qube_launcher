@@ -219,7 +219,6 @@ function qube_shutdown () {
     declare _displist=$(qvm-ls --raw-data --running --fields name \
         | grep disp 
         )
-    #    | cut -f 1 -d '|'
 
     while read -r _dispvm <&3; do
         notify 2 "qube_shutdown: --$_dispvm--"
@@ -231,21 +230,18 @@ function qube_shutdown () {
         | grep -v sys-net \
         | grep -v dom0
         )
-    #    | cut -f 1 -d '|'
 
     while read -r _vm <&3; do
         notify 2 "qube_shutdown: --$_vm--"
         qvm-shutdown --wait $_vm
     done 3<<< "$_runninglist "
 
-#    while [[ "$(qube_num_running)" -gt "0" ]]; do
-#        qvm-shutdown --all
-#        sleep 15
-#    done
-
     qvm-shutdown --wait sys-firewall
     qvm-shutdown --wait sys-net
 
+    sleep 10
+
+    sudo poweroff
 }
 
 
