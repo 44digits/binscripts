@@ -639,9 +639,9 @@ VM_SOFT=(
         audacity
         calibre
         chromium
+        curl
         deluge
         eog
-        curl
         gimp
         git
         gnucash
@@ -649,11 +649,13 @@ VM_SOFT=(
         jmtpfs
         lame
         libdbd-sqlite3
+        librecad
         libreoffice
         lyx 
         nautilus
         pdftk
         python3-pip
+        remmina
         remmina
         rsync
         s3cmd
