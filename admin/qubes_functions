@@ -62,10 +62,9 @@ function qube_get_distribution () {
     declare _cmd
     
     _cmd=$(tr -s [:space:] <<EOF | tr -d '\n' 
-        if [[ -f "/etc/fedora-release" ]]; then echo fedora;
-        elif [[ -f "/etc/os-release" ]]; then echo debian;
-        else echo unknown;
-        fi
+        cat /etc/os-release 
+            | grep -G "^ID" 
+            | cut -d'=' -f2
 EOF
 )
     
