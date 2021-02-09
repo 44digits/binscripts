@@ -8,7 +8,7 @@
 
 source $(dirname "$0")/qubes_functions
 
-__DIALOGHEIGHT=750
+__DIALOGHEIGHT=770
 __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
     ..............................
     fedora-30-dvm 
@@ -16,19 +16,24 @@ __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
     plus-dvm
     printer-dvm
     ..............................
+    congy5
     dev
+    email
     files
     fin
     gpg
+    media
+    study
     tex
     transfer
+    usb03
     work
+    zoom-conference
 EOF
 )
 
 __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
     ..............................
-    .plugins
     <pass>
     <search>
     <url>
@@ -37,12 +42,15 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
     gmail.com
     google.com
     linkedin.com
+    plugins.com
     privateemail.com
     workflowy.com
     ..............................
+    arrange
     calibre
     chromium
     classicFM
+    congy
     firefox
     gedit
     gnome-terminal
@@ -51,6 +59,7 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
     kodi
     nautilus
     postTrello
+    thunder
     xterm
     ..............................
     scan
@@ -122,6 +131,8 @@ function firefox_plugins () {
         https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/
         https://addons.mozilla.org/en-US/firefox/addon/privacy-badger17/
         https://addons.mozilla.org/en-US/firefox/addon/printable-the-print-doctor/
+        https://addons.mozilla.org/en-US/firefox/addon/user-agent-string-switcher/
+        https://outerjoin.us
 EOF
     )
     qvm_firefox $__DVM "$_urls" &
@@ -206,11 +217,17 @@ EOF
 
 
 
+function thunderbird_local () {
+    qvm-run -u root $__qvm_run_options email "/home/user/fix_locale"
+    qvm-run $__qvm_run_options email "/home/user/thunderbird_timefix"
+}
+
+
+
 function qube_shutdown () {
     declare _dispvm
     declare _displist=$(qvm-ls --raw-data --running --fields name \
-        | grep disp \
-        | cut -f 1 -d '|'
+        | grep disp 
         )
 
     while read -r _dispvm <&3; do
@@ -218,10 +235,23 @@ function qube_shutdown () {
         qvm-kill $_dispvm
     done 3<<< "$_displist"
 
-    while [[ "$(qube_num_running)" -gt "0" ]]; do
-        qvm-shutdown --all
-        sleep 15
-    done
+    declare _runninglist=$(qvm-ls --raw-data --running --fields name \
+        | grep -v sys-firewall \
+        | grep -v sys-net \
+        | grep -v dom0
+        )
+
+    while read -r _vm <&3; do
+        notify 2 "qube_shutdown: --$_vm--"
+        qvm-shutdown --wait $_vm
+    done 3<<< "$_runninglist "
+
+    qvm-shutdown --wait sys-firewall
+    qvm-shutdown --wait sys-net
+
+    sleep 10
+
+    sudo poweroff
 }
 
 
@@ -233,7 +263,7 @@ function safe_execute_vm () {
     notify 2 "safe_execute_vm: vm:$_vm with $_command"
 
     if [[ $(qube_get_state $_vm) == "Running" ]]; then
-        eval $_command
+        eval $_command &
     else
         safe_execute $_command
     fi
@@ -267,6 +297,7 @@ function unlockit () {
 function lockit () {
     while ! mkdir $__lockme 2>/dev/null; do
         notify 2 "lockit: waiting"
+        sleep 1
     done
 
     notify 2 "lockit: lock made"
@@ -294,7 +325,7 @@ function launcher_main () {
                         qvm-run \
                         $__qvm_run_options \
                         gpg \
-                        "\"gnome-terminal --geometry=115x10 -e 'bash -c \\\"grep $_passstring logins_2020;bash\\\" '\""
+                        "\"gnome-terminal --geometry=115x10 -e 'bash -c \\\"grep -i $_passstring logins_2020;bash\\\" '\""
 
                 fi
                 ;;
@@ -331,11 +362,16 @@ function launcher_main () {
                 safe_execute firefox_work
                 ;;
 
-            .plugins)
+            plugins.com)
                 safe_execute firefox_plugins
                 ;;
 
             # apps to run in any vm or dvm
+            arrange)
+                declare _mydir=$(dirname "$0")
+                $_mydir/qube_arrangewindows
+                ;; 
+
             classicFM)
                 safe_execute_vm media \
                     qvm-run \
@@ -379,6 +415,11 @@ function launcher_main () {
                 fi
                 ;;
             # apps for specific vms
+            congy)
+                safe_execute_vm congy5 \
+                    qvm-run $__qvm_run_options congy5 "gnome-terminal"
+                ;;
+
             hangouts)
                 safe_execute_vm usb03 \
                     qvm_chrome usb03 "https://hangouts.google.com"
@@ -389,6 +430,10 @@ function launcher_main () {
                     qvm-run $__qvm_run_options epub "calibre"
                 ;;
                 
+            thunder)
+                safe_execute \
+                    thunderbird_local
+                ;;
             kodi)
                 safe_execute_vm media \
                     qvm-run $__qvm_run_options media "kodi"
@@ -414,10 +459,26 @@ function launcher_main () {
                 qube_shutdown
                 ;;
             startup)
-                safe_execute "qvm_firefox $__DVM \"gmail.com\""
+                safe_execute_vm congy5 \
+                    qvm-run $__qvm_run_options congy5 "gnome-terminal"
+                sleep 1
+                safe_execute_vm congy5 \
+                    qvm-run $__qvm_run_options congy5 "teams"
+                sleep 1
+                safe_execute_vm congy5 \
+                    qvm-run $__qvm_run_options congy5 "/home/user/startup"
+                sleep 3
+                safe_execute \
+                    thunderbird_local
+                    #qvm-run $__qvm_run_options email "/home/user/thunderbird_timefix"
+                sleep 1
                 safe_execute firefox_plugins
                 safe_execute firefox_work
-                safe_execute chrome_linkedin
+                safe_execute_vm media \
+                    qvm-run \
+                        $__qvm_run_options \
+                        media \
+                        "\"vlc /home/user/media/ClassicFMMP3.m3u\""
                 ;;
 
             *)

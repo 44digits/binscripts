@@ -1,0 +1,36 @@
+
+function make_win_vm () {
+    WINVMNAME=win7
+    WINCD=/home/user/iso/win7.iso
+    # https://www.qubes-os.org/doc/windows-vm/#qubes-40---windows-vm-installation
+
+    qvm-create --class StandaloneVM \
+        --label red \
+        --property virt_mode=hvm \
+        $WINVMNAME
+    qvm-prefs $WINVMNAME memory 8192
+    qvm-prefs $WINVMNAME maxmem 8192
+    qvm-prefs $WINVMNAME kernel ''
+    qvm-volume extend $WINVMNAME:root 25g
+    qvm-prefs $WINVMNAME debug true
+    qvm-features $WINVMNAME video-model cirrus
+
+    qvm-start --cdrom=personal:$WINCD $WINVMNAME
+
+    echo "make_win_vm: Windows VM started... waiting"
+    read X
+
+    qvm-clone $WINVMNAME win7-backinstalled
+
+    qvm-features --unset $WINVMNAME video-model
+    qvm-prefs $WINVMNAME qrexec_timeout 300
+
+    #Install qubes tools:
+    sudo qubes-dom0-update qubes-windows-tools
+    qvm-start $WINVMNAME --install-windows-tools
+
+    echo "make_win_vm: Windows VM installing qubes tools... waiting"
+    read X
+
+    qvm-prefs -s $WINVMNAME debug false
+}

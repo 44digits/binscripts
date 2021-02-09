@@ -5,11 +5,11 @@ DEBUG=1
 declare _VAULTVM=fin
 declare _DVM=plus-dvm
 declare _S3SCRIPT=$(basename "$0")
-declare _LOCALS3SCRIPT="/home/user/QubesIncoming/dom0/$S3SCRIPT"
+declare _LOCALS3SCRIPT="/home/user/QubesIncoming/dom0/$_S3SCRIPT"
 declare _TARLIST=".s3cfg .vault/"
 
 declare _S3=
-source $(dirname "$0")/$0.secrets
+source "$0.secret"
 
 
 
@@ -26,12 +26,11 @@ function dom0_run {
         <(echo $_DISPOSABLELIST02 | tr ' ' '\n'))
     
     echo "Copy to :$_NEWDVM"
-    qvm-copy-to-vm $_VAULTVM $_S3SCRIPT
+    qvm-copy-to-vm $_VAULTVM $_S3SCRIPT $_S3SCRIPT.secret
     qvm-run -p $_VAULTVM "bash $_LOCALS3SCRIPT fin"
     qvm-run -p $_VAULTVM "rm -f $_LOCALS3SCRIPT"
 
-    qvm-copy-to-vm $_NEWDVM $_S3SCRIPT
-    qvm-copy-to-vm $_NEWDVM $(dirname "$0")/secrets
+    qvm-copy-to-vm $_NEWDVM $_S3SCRIPT $_S3SCRIPT.secret
     qvm-run -p $_NEWDVM "bash $_LOCALS3SCRIPT upload"
 
     echo "Completed..."
@@ -47,7 +46,7 @@ function fin_run  {
 
 
 function dvm_run {
-    source $(dirname "$0")/secrets
+    source $0.secret
 
     mv /home/user/QubesIncoming/fin/.vault ~/
     mv /home/user/QubesIncoming/fin/.s3cfg ~/

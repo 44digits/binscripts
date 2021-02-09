@@ -104,11 +104,13 @@ function main () {
                 --delete
                 --ignore-errors
                 -av
+                --filter="- *.git*"
+                --filter="- *.iso"
+                --filter="- *.log"
+                --filter="- */Trash/*"
                 --filter="- *cache*"
                 --filter="- *humbnail*"
                 --filter="- *venv*"
-                --filter="- *.iso"
-                --filter="- *.git*"
                 /home/user/
                 /mnt/backup/bak/qubes/$_vm/
 EOF

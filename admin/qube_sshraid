@@ -1,0 +1,141 @@
+#!/bin/bash
+
+# qube_sshraid
+# make qube for sharing raid device
+#
+# Date: 2020.05.29
+
+
+
+declare _raiddevice="dom0:md127"
+declare _mountpoint="/mnt/raid"
+declare __qvm_run_options="${__qvm_run_options:-"-p --color-stderr=37"}"
+declare __dialogheight=600
+declare _dvm=fedora-30-dvm
+
+set -e 
+
+source $(dirname "$0")/qubes_functions
+
+
+
+function check_device () {
+    declare _device=$1
+
+    qvm-device block ls | grep $_device
+}
+
+
+
+function get_deviceid () {
+    declare _vm=$1
+    declare _deviceid
+    _deviceid=$(qvm-run $__qvm_run_options $_vm "lsblk | tac | grep -m 1 . | cut -d' ' -f 1")
+
+    notify 2 "get_deviceid: $_deviceid"
+    echo "$_deviceid"
+}
+
+
+
+function attach_device () {
+    declare _vm=$1
+    declare _device=$2
+    declare _mountpoint=$3
+    declare _deviceid
+
+    notify 2 "attach_device: qvm-device block attach $_vm $_device (on $_mountpoint)"
+    # perform run action to wake up qube
+    qvm-run $__qvm_run_options -u root $_vm "mkdir -p $_mountpoint"
+
+    qvm-device block attach $_vm $_device
+    _deviceid=$(get_deviceid $_vm)
+    qvm-run $__qvm_run_options -u root $_vm "chmod a+rwx $_mountpoint"
+    qvm-run $__qvm_run_options -u root $_vm "mount /dev/$_deviceid $_mountpoint"
+
+    declare _mounted=$(qvm-run $__qvm_run_options $_vm "grep $_mountpoint /proc/mounts")
+    if [[ -z $_mounted ]]; then
+        notify 0 "ERROR: attach_device /dev/$_deviceid not mounted"
+        exit 1
+    else
+        notify 2 "attach_device: /dev/$_deviceid"
+        echo "/dev/$_deviceid"
+    fi
+}
+
+
+
+function detach_device () {
+    declare _vm=$1
+    declare _device=$2
+    declare _mountpoint=$3
+
+    qvm-run $__qvm_run_options $_vm "sync"
+    sleep 2
+
+    qvm-run $__qvm_run_options -u root $_vm "umount $_mountpoint"
+    sleep 2
+    qvm-device block detach $_vm $_device
+    notify 2 "detach_device: $_vm $_device"
+}
+
+
+
+function dvm_setup {
+    declare _dvm=$1
+    declare _commands
+
+    notify 2 "--dvm_setup:$_dvm"
+
+    _commands=$(cat <<EOF
+        dnf -y install passwd openssh-server
+        passwd user
+        systemctl start sshd
+EOF
+)
+
+    qube_run_commands $_dvm "root" "$_commands"
+    qvm-portfwd-iptables $_dvm 22 tcp
+}
+
+
+
+function main () {
+    declare _cmd
+    declare _sshvm
+    declare _deviceid
+    declare _disposablelist01
+    declare _disposablelist02
+    declare _userinput
+
+    notify 1 "Qube SSH starting..."
+    check_device $_raiddevice
+
+    # unable to run qvm-run in funciton without hanging
+    _disposablelist01=$(qvm-ls --raw-list | grep disp)
+    _cmd="qvm-run --dispvm=fedora-30-dvm 'xterm'"
+    $_cmd &
+    sleep 30
+    _disposablelist02=$(qvm-ls --raw-list | grep disp)
+    
+    _sshvm=$(comm -13 \
+        <(echo $_disposablelist01 | tr ' ' '\n') \
+        <(echo $_disposablelist02 | tr ' ' '\n'))
+    notify 2 "--started _sshvm:$_sshvm"
+
+    dvm_setup $_sshvm
+    _deviceid=$(attach_device $_sshvm $_raiddevice $_mountpoint)
+
+    echo "Waiting to kill ssh dvm..."
+    read _userinput
+
+    detach_device $_sshvm $_raiddevice $_mountpoint
+    qvm-shutdown -v $_sshvm
+
+    notify 1 "...Qube SSH finished"
+}
+
+
+main
+
+

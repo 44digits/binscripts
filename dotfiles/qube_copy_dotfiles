@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# qube_copy_dotfiles
+
+declare _sourceqube=dev
+declare _sourcedir=/home/user/system/dotfiles
+declare _destdir=$(dirname "$0")
+declare _filelist
+
+read -r -d '' _filelist <<EOF
+    __bashrc
+    _screenrc
+    _vimrc
+EOF
+
+for _f in $_filelist; do
+    echo $_f
+    qvm-run -p \
+        $_sourceqube \
+        "cat $_sourcedir/$_f" \
+        > $_destdir/$_f
+done
+
+

@@ -1,0 +1,120 @@
+#!/bin/bash
+####################################################################
+# qube_arrange_windows
+#
+# arrange desktop
+#
+# Date: 2020.12.24
+
+
+get_windowid_xdotool () {
+    # get window id using xdotool return in hex
+    #   does not seem to work unless window on visible workspace
+    #   but changing --onlyvisible will return multiple results
+    declare window_name=$1
+    declare win_id_decimal
+    declare win_id_hex
+
+    win_id_decimal=$(xdotool search --onlyvisible --name "$window_name")
+    win_id_hex=$( printf "0x%x\n" $win_id_decimal )
+
+    echo $win_id_hex
+}
+
+
+get_windowid_wmctrl () {
+    # get window id using wmctrl return in hex
+    declare window_name=$1
+    declare win_id_hex
+
+    win_id_hex=$( wmctrl -lx | grep -i -m 1 "$window_name" | cut -f1 -d' ')
+    echo $win_id_hex
+
+}
+
+set_window_geom () {
+    declare winid=$1
+    declare x=$2
+    declare y=$3
+    declare height=$4
+    declare width=$5
+    declare workspace=$6
+    declare sticky=$7
+
+    wmctrl -i -r $winid -e 0,$2,$3,$4,$5
+
+    if [[ $workspace -ne 0 ]]; then
+        wmctrl -i -r $winid -t $workspace
+    fi
+    if [[ $sticky -ne 0 ]]; then
+        wmctrl -i -r $winid -b add,sticky
+    fi
+}
+
+
+declare win_id
+
+# microsoft teams
+win_id=$(get_windowid_wmctrl "microsoft teams")
+set_window_geom $win_id 0 30 1200 650 0 1
+
+# scrappy browser
+win_id=$(get_windowid_xdotool "ublock")
+set_window_geom $win_id 100 170 1000 852 0 1
+
+# workflowy
+win_id=$(get_windowid_xdotool "workflowy")
+set_window_geom $win_id 773 30 900 850 0 0
+
+# congy terminal
+win_id=$(get_windowid_wmctrl "congy5:gnome-terminal")
+set_window_geom $win_id 938 30 734 459 1 0
+
+# congy slack
+win_id=$(get_windowid_wmctrl "congy5:slack")
+set_window_geom $win_id 0 472 1000 550 1 0
+
+# congy firefox
+win_id=$(get_windowid_wmctrl "congy5:Navigator")
+set_window_geom $win_id 250 170 1200 852 1 0
+
+# congy gvim
+win_id=$(get_windowid_wmctrl "congy5:gvim")
+set_window_geom $win_id 892 104 780 748 1 0
+
+# congy remmina
+win_id=$(get_windowid_wmctrl "congy5:org.remmina")
+set_window_geom $win_id 1680 30 779 456 1 0
+
+# vpn
+declare vpn_qube=$(wmctrl -lx \
+    | grep deluge \
+    | tr -s ' ' \
+    | cut -f3 -d' ' \
+    | cut -f1 -d':')
+
+if [[ ! -z $vpn_qube ]]; then
+    win_id=$(get_windowid_wmctrl "dom0 VPN")
+    set_window_geom $win_id 1680 30 -1 -1 2 0
+
+    win_id=$(get_windowid_wmctrl "$vpn_qube:deluge")
+    set_window_geom $win_id 1680 180 1100 500 2 0
+
+    win_id=$(get_windowid_wmctrl "$vpn_qube:nautilus")
+    set_window_geom $win_id 1894 30 900 600 2 0
+
+    win_id=$(get_windowid_wmctrl "$vpn_qube:Navigator")
+    set_window_geom $win_id 2720 30 900 1020 2 0
+
+fi
+
+
+# get list of windows:
+#   wmctrl -lx
+#   for p in $(xdotool search  --onlyvisible '.*'); do echo $p $(xdotool getwindowname $p) ; done
+# get window dimensions: xwininfo
+
+
+
+
+
