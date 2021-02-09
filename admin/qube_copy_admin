@@ -10,6 +10,7 @@ declare _filelist
 read -r -d '' _filelist <<EOF
     qube_admin
     qube_backup
+    qube_sshraid
     qube_blockit
     qube_copy_admin
     qube_hostnames
@@ -17,7 +18,7 @@ read -r -d '' _filelist <<EOF
     qube_make_gis
     qube_make_win
     qube_s3vault
-    qube_s3vault.secrets
+    qube_s3vault.secret
     qubes_functions
     qvm-portfwd-iptables
     config/brother_instructions_mfcl2710dwp.pdf
@@ -27,7 +28,7 @@ read -r -d '' _filelist <<EOF
     config/go_install
     config/linux-brprinter-installer-2.2.1-1.gz
     config/python3_install
-    config/vpn.ovpn
+    config/vpn.ovpn.secret
     config/vpn-startup
     config/configFirefox/autoconfig.js
     config/configFirefox/configFirefox
