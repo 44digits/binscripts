@@ -4,13 +4,13 @@
 #
 # automate the creation and updating of qubes
 #
-# Date: 2019.10.10
+# Date: 2021.02.10
 # Author: Andrew Ross
 #
 
 
-declare _MASTERTEMPLATE=debian-10
-declare _SYSTEMTEMPLATE=fedora-28-30
+declare _MASTER_DEBIAN_TEMPLATE=debian-10
+declare _MASTER_FEDORA_TEMPLATE=fedora-32
 declare _CONFIGDIR="$(dirname $0)/config/"
 
 declare __notifylevel="${__notifylevel:-2}"
@@ -20,13 +20,13 @@ source $(dirname "$0")/qubes_functions
 set -e
 
 
-#function print_help() {
-#    echo "Usage: vm_mgmt (-c | -u | -d) -v (VMNAME|all)"
-#    echo "  where VNAME in usb,plus,media,dev,vault,printer"
-#    exit 1
-#}
-#
-#
+function print_help() {
+    echo "Usage: qube_admin (-c | -u ) -t (template name|all) -a (app vm name|all)"
+    echo "  where c:create, u:update"
+    exit 1
+}
+
+
 
 #function check_vm () {
 #    # check if vm exists - delete or exit
@@ -590,8 +590,72 @@ function create_min () {
 
 
 function main () {
-    # create_min
-    create_congy
+    declare ACTION
+    declare VM
+
+    while getopts ":cut:a:" opt; do
+        case $opt in
+            c)
+                ACTION="create"
+                ;;
+            u)
+                ACTION="update"
+                ;;
+            t)
+                VMTYPE="template"
+                VM=$OPTARG
+                ;;
+            a)
+                VMTYPE="app"
+                VM=$OPTARG
+                ;;
+            :)
+                echo "Option -$OPTARG requires argument"
+                print_help
+                ;;
+            \?)
+                echo "Invalid option: -$OPTARG"
+                print_help
+                ;;
+        esac
+    done
+
+
+    if [ "$ACTION" == "" ] || [ "$VM" == "" ]; then
+        print_help
+    fi
+
+    if [ "$DEBUG" ]; then echo "--VM:$VM ACTION:$ACTION"; fi
+
+    case $ACTION in 
+        create)
+            case $VMTYPE in
+                template)
+                    create_template_qube $VM
+                    ;;
+                app)
+                    create_app_vm $VM
+                    ;;
+            esac
+            ;;
+        update)
+            case $VMTYPE in
+                template)
+                    update_qube $VM
+                    ;;
+                app)
+                    echo "Only Template VMs can be updated"
+                    print_help
+                    ;;
+            esac
+            ;;
+        *) 
+            echo "Unknown action: $ACTION"
+            print_help
+            ;;
+    esac
+
+
 }
 
 
@@ -601,16 +665,16 @@ declare -A VM_TEMPLATE_NAMES
 declare -A VM_CONFIG
 
 VM_TEMPLATE_NAMES=(
-    [master]=$_MASTERTEMPLATE
-    [system]=$_SYSTEMTEMPLATE
-    [dev]=$_MASTERTEMPLATE-dev
-    [media]=$_MASTERTEMPLATE-media
-    [min]=$_MASTERTEMPLATE-min
-    [plus]=$_MASTERTEMPLATE-plus
-    [printer]=$_MASTERTEMPLATE-printer
-    [usb]=$_SYSTEMTEMPLATE-usb
-    [zoom]=$_MASTERTEMPLATE-zoom
-    [congy]=$_MASTERTEMPLATE-congy
+    [master]=$_MASTER_DEBIAN_TEMPLATE
+    [system]=$_MASTER_FEDORA_TEMPLATE
+    [dev]=$_MASTER_DEBIAN_TEMPLATE-dev
+    [media]=$_MASTER_DEBIAN_TEMPLATE-media
+    [min]=$_MASTER_DEBIAN_TEMPLATE-min
+    [plus]=$_MASTER_DEBIAN_TEMPLATE-plus
+    [printer]=$_MASTER_DEBIAN_TEMPLATE-printer
+    [usb]=$_MASTER_FEDORA_TEMPLATE-usb
+    [zoom]=$_MASTER_DEBIAN_TEMPLATE-zoom
+    [congy]=$_MASTER_DEBIAN_TEMPLATE-congy
     )
 
 VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
@@ -932,5 +996,5 @@ function old () {
     echo "...done"
 }
 
-main 
+main "$@"
 
