@@ -23,6 +23,7 @@ __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
     fin
     gpg
     media
+    study
     tex
     transfer
     usb03
@@ -45,6 +46,7 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
     privateemail.com
     workflowy.com
     ..............................
+    arrange
     calibre
     chromium
     classicFM
@@ -130,6 +132,7 @@ function firefox_plugins () {
         https://addons.mozilla.org/en-US/firefox/addon/privacy-badger17/
         https://addons.mozilla.org/en-US/firefox/addon/printable-the-print-doctor/
         https://addons.mozilla.org/en-US/firefox/addon/user-agent-string-switcher/
+        https://outerjoin.us
 EOF
     )
     qvm_firefox $__DVM "$_urls" &
@@ -214,6 +217,13 @@ EOF
 
 
 
+function thunderbird_local () {
+    qvm-run -u root $__qvm_run_options email "/home/user/fix_locale"
+    qvm-run $__qvm_run_options email "/home/user/thunderbird_timefix"
+}
+
+
+
 function qube_shutdown () {
     declare _dispvm
     declare _displist=$(qvm-ls --raw-data --running --fields name \
@@ -253,7 +263,7 @@ function safe_execute_vm () {
     notify 2 "safe_execute_vm: vm:$_vm with $_command"
 
     if [[ $(qube_get_state $_vm) == "Running" ]]; then
-        eval $_command
+        eval $_command &
     else
         safe_execute $_command
     fi
@@ -357,6 +367,11 @@ function launcher_main () {
                 ;;
 
             # apps to run in any vm or dvm
+            arrange)
+                declare _mydir=$(dirname "$0")
+                $_mydir/qube_arrangewindows
+                ;; 
+
             classicFM)
                 safe_execute_vm media \
                     qvm-run \
@@ -416,8 +431,8 @@ function launcher_main () {
                 ;;
                 
             thunder)
-                safe_execute_vm email \
-                    qvm-run $__qvm_run_options email "thunderbird_timefix"
+                safe_execute \
+                    thunderbird_local
                 ;;
             kodi)
                 safe_execute_vm media \
@@ -447,11 +462,23 @@ function launcher_main () {
                 safe_execute_vm congy5 \
                     qvm-run $__qvm_run_options congy5 "gnome-terminal"
                 sleep 1
-                safe_execute_vm email \
-                    qvm-run $__qvm_run_options email "thunderbird_timefix"
+                safe_execute_vm congy5 \
+                    qvm-run $__qvm_run_options congy5 "teams"
+                sleep 1
+                safe_execute_vm congy5 \
+                    qvm-run $__qvm_run_options congy5 "/home/user/startup"
+                sleep 3
+                safe_execute \
+                    thunderbird_local
+                    #qvm-run $__qvm_run_options email "/home/user/thunderbird_timefix"
                 sleep 1
                 safe_execute firefox_plugins
                 safe_execute firefox_work
+                safe_execute_vm media \
+                    qvm-run \
+                        $__qvm_run_options \
+                        media \
+                        "\"vlc /home/user/media/ClassicFMMP3.m3u\""
                 ;;
 
             *)
