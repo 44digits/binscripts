@@ -27,27 +27,6 @@ function print_help() {
 }
 
 
-
-#function check_vm () {
-#    # check if vm exists - delete or exit
-#    declare _vmname=$1
-#    notify 2 "--check_vm: vmname:$_vmname"
-#    
-#    qvm-check $_vmname
-#    if [ "$?" -eq 0 ]; then
-#        read -p "  delete (n/Y)?" R
-#        if [ "$R" == "Y" ]; then 
-#            qvm-remove $_vmname
-#            if [ "$?" -ne 0 ]; then exit 1; fi
-#        else
-#            echo "Exiting..."
-#            exit 1
-#        fi
-#    fi
-#}
-
-
-
 function create_template () {
     declare _template=$1
     declare _master=$2
@@ -59,14 +38,38 @@ function create_template () {
         qvm-clone $_master $_template
     else
         notify 2 "--create_template : exists _template:$_template"
+        exit 1
     fi
 
     qube_update $_template
     qube_install_software $_template $_software
-    #qvm-sync-appmenus $_template
-    #qvm-shutdown $_template
 }
 
+function build_system_dvm () {
+    declare _vm=${VM_TEMPLATE_NAMES[dvm]}
+    
+    config_firefox $_vm
+}
+
+
+
+function template_install_additions () {
+    declare _vm=$1
+
+    notify 2 "--template_install_additions: $_vm"
+    case $_vm in
+        dvm)
+            build_system_dvm
+            ;;
+        printer)
+            build_printer_dvm
+            ;;
+        congy)
+            build_congy
+            ;;
+        *)
+    esac
+}
 
 
 function config_user () {
@@ -129,10 +132,11 @@ EOF
 
 
 function config_firefox () {
-    declare _appvm=$1
+    declare _vm=$1
     declare _commands
+    declare _f
 
-    notify 2 "--config_firefox _appvm:$_appvm"
+    notify 2 "--config_firefox _appvm:$_vm"
 
     for _f in ls config/configFirefox/; do
         qvm-copy-to-vm $_template $_f
@@ -141,34 +145,9 @@ function config_firefox () {
     qvm-run \
         $__qvm_run_options \
         -u "root" \
-        $_apppvm \
+        $_vm \
         "/home/user/QubesIncoming/dom0/configFirefox"
 }
-
-
-
-#function update_template () {
-#    local template=$1
-#    if [ "$DEBUG" ]; then echo "--update_template: template:$template"; fi
-#
-#    qvm-run -p -u root $template "apt-get -y update"
-#    qvm-run -p -u root $template "apt-get -y upgrade"
-#    qvm-run -p -u root $template "apt-get -y dist-upgrade"
-#    qvm-run -p -u root $template "apt-get -y clean"
-#    qvm-run -p -u root $template "apt-get -y remove"
-#    qvm-run -p -u root $template "apt-get -y autoremove"
-#}
-
-
-#function install_software () {
-#    local template=$1
-#    local software=$2
-#    if [ "$DEBUG" ]; then echo "--install_software: template:$template, software:$software"; fi
-#
-#    softwarelist=$(echo $software | tr '&' ' ')
-#
-#    qvm-run -p -u root $template "apt-get -y install $softwarelist"
-#}
 
 
 function create_vpn () {
@@ -631,17 +610,22 @@ function main () {
         create)
             case $VMTYPE in
                 template)
-                    create_template_qube $VM
+                    TEMPLATE=${VM_TEMPLATE_NAMES[$VM]}
+                    SOFTWARE=${VM_SOFT[$VM]}
+
+                    create_template $TEMPLATE $SOFTWARE
+                    template_install_additions $VM
                     ;;
                 app)
-                    create_app_vm $VM
+                    create_app_vm $TEMPLATE
                     ;;
             esac
             ;;
         update)
             case $VMTYPE in
                 template)
-                    update_qube $VM
+                    TEMPLATE=${VM_TEMPLATE_NAMES[$VM]}
+                    qube_update $TEMPLATE
                     ;;
                 app)
                     echo "Only Template VMs can be updated"
@@ -665,16 +649,17 @@ declare -A VM_TEMPLATE_NAMES
 declare -A VM_CONFIG
 
 VM_TEMPLATE_NAMES=(
-    [master]=$_MASTER_DEBIAN_TEMPLATE
-    [system]=$_MASTER_FEDORA_TEMPLATE
+    [debian]=$_MASTER_DEBIAN_TEMPLATE
+    [fedora]=$_MASTER_FEDORA_TEMPLATE
+    [congy]=$_MASTER_DEBIAN_TEMPLATE-congy
     [dev]=$_MASTER_DEBIAN_TEMPLATE-dev
+    [dvm]=$_MASTER_FEDORA_TEMPLATE-dvm
     [media]=$_MASTER_DEBIAN_TEMPLATE-media
     [min]=$_MASTER_DEBIAN_TEMPLATE-min
     [plus]=$_MASTER_DEBIAN_TEMPLATE-plus
     [printer]=$_MASTER_DEBIAN_TEMPLATE-printer
     [usb]=$_MASTER_FEDORA_TEMPLATE-usb
     [zoom]=$_MASTER_DEBIAN_TEMPLATE-zoom
-    [congy]=$_MASTER_DEBIAN_TEMPLATE-congy
     )
 
 VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
