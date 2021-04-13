@@ -13,8 +13,7 @@ declare _MASTER_DEBIAN_TEMPLATE=debian-10
 declare _MASTER_FEDORA_TEMPLATE=fedora-32
 declare _CONFIGDIR="$(dirname $0)/config/"
 
-declare __notifylevel="${__notifylevel:-2}"
-declare __qvm_run_options="${__qvm_run_options:-"-p --color-stderr=37"}"
+declare __notifylevel=2
 
 source $(dirname "$0")/qubes_functions
 set -e
@@ -27,23 +26,170 @@ function print_help() {
 }
 
 
+function template_master () {
+    declare _templateconfig=$1
+    declare _name_parts 
+
+    _name_parts=(${_templateconfig//:/ })
+    echo "${_name_parts[0]}"
+}
+
+
+
+function template_name () {
+    declare _templateconfig=$1
+    declare _name_parts 
+
+    _name_parts=(${_templateconfig//:/ })
+    if [ "${#_name_parts[@]}" -eq "2" ]; then
+        echo "${_name_parts[0]}-${_name_parts[1]}"
+    else
+        echo "${_name_parts[0]}"
+    fi
+}
+
+
+
 function create_template () {
-    declare _template=$1
-    declare _master=$2
-    declare _software=$3
+    declare _templateconfig=$1
+    declare _software=$2
+    declare _master=$(template_master $_templateconfig)
+    declare _template=$(template_name $_templateconfig)
+
     notify 1 "--create_template : _template:$_template, _software:$_software"
 
-    if [[ -z $(qube_exists $_template) ]]; then
+    if [[ $(qube_exists $_template) ]]; then
+        notify 2 "--create_template : exists _template:$_template"
+
+    else
         notify 2 "--create_template : creating _template:$_template"
         qvm-clone $_master $_template
-    else
-        notify 2 "--create_template : exists _template:$_template"
-        exit 1
+        qube_update $_template
+        qube_install_software $_template $_software
+
     fi
 
-    qube_update $_template
-    qube_install_software $_template $_software
 }
+
+
+function template_install_additions () {
+    declare _vm=$1
+    declare _makeapps=$2
+
+    notify 2 "--template_install_additions: $_vm"
+    case $_vm in
+        congy)
+            build_congy $_makeapps
+            ;;
+        dev)
+            build_dev $_makeapps
+            ;;
+        dvm)
+            build_system_dvm
+            ;;
+        printer)
+            build_printer_dvm
+            ;;
+        *)
+    esac
+}
+
+
+
+function create_appvm () {
+    declare _appvm=$1
+    declare _configs=(${2//;/ })
+    declare _vmtype=${_configs[0]}
+    declare _templatename=$(template_name ${_configs[1]})
+    declare _vmlabel=${_configs[2]}
+    declare _maxmem=${_configs[3]}
+    declare _mem=${_configs[4]}
+    declare _storage=${_configs[5]}
+    declare _vcpu=${_configs[6]}
+    declare _netvm=${_configs[7]}
+    declare _dvm=${_configs[8]}
+
+    # 0 type;1 template;2 lable;3 maxmem;4 memory;
+    # 5 storage;6 vCPUs;7 network;8 dvm"
+
+    notify 2 "--create_appvm _appvm:$_appvm, _template:${_configs[1]}"
+    notify 2 "--create_appvm ${_configs[@]}"
+    
+    if [[ $(qube_exists $_template) ]]; then
+        notify 2 "--create_template : exists _template:$_template"
+
+    else
+        qvm-create \
+            --class $_vmtype \
+            --template $_templatename \
+            --label $_vmlabel \
+            --prop=maxmem=$_maxmem \
+            --prop=memory=$_mem \
+            --prop=vcpus=$_vcpu \
+            $_appvm
+
+        qvm-prefs $_appvm qrexec_timeout 200
+
+        if [[ $_storage != "x" ]]; then
+            qvm-volume extend $_appvm:private ${_storage}mb
+        fi
+        
+        if [[ $_netvm == "x" ]]; then
+            qvm-prefs $_appvm netvm ""
+        else
+            qvm-prefs $_appvm netvm $_netvm 
+        fi
+        
+        if [[ $_dvm -eq "1" ]]; then
+            qvm-prefs $_appvm template_for_dispvms True
+        fi
+    fi
+}
+
+
+function build_dev () {
+    declare _makeapps=$1
+    notify 2 "--build_dev map apps: $_makeapps"
+
+    if [[ ! "$_makeapps" -eq "0" ]]; then 
+
+        for _vm in \
+            dev2 \
+            learn;
+        do
+            create_appvm $_vm ${VM_CONFIG[$_vm]}
+            config_user $_vm
+            config_user_firefox $_vm
+
+            for _f in \
+                appendPDF \
+                doublePDF \
+                img2pdf \
+                randomChars.py;
+            do
+                qube_copy_file \
+                    $_vm \
+                    "root" \
+                    "utilities/$_f" \
+                    "/usr/local/bin/$_f"
+            done
+            for _f in \
+                python3_install \
+                go_install; 
+            do
+                qube_copy_file \
+                    $_vm \
+                    "user" \
+                    "config/$_f" \
+                    "/home/user/$_f"
+            done
+
+            qube_remove_incomming $_vm
+            qvm-shutdown $_vm
+        done
+    fi
+}
+
 
 function build_system_dvm () {
     declare _vm=${VM_TEMPLATE_NAMES[dvm]}
@@ -51,25 +197,6 @@ function build_system_dvm () {
     config_firefox $_vm
 }
 
-
-
-function template_install_additions () {
-    declare _vm=$1
-
-    notify 2 "--template_install_additions: $_vm"
-    case $_vm in
-        dvm)
-            build_system_dvm
-            ;;
-        printer)
-            build_printer_dvm
-            ;;
-        congy)
-            build_congy
-            ;;
-        *)
-    esac
-}
 
 
 function config_user () {
@@ -113,7 +240,7 @@ EOF
 }
 
 
-function config_firefox_addons () {
+function config_user_firefox () {
     declare _appvm=$1
     declare _commands
 
@@ -121,8 +248,8 @@ function config_firefox_addons () {
 
     _commands=$(cat <<EOF
         firefox 
-            https://addons.mozilla.org/en-US/firefox/addon/noscript/ 
-            https://addons.mozilla.org/en-US/firefox/addon/adblock-plus/ 
+            https://addons.mozilla.org/en-US/firefox/addon/privacy-badger17/
+            https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/
 EOF
     )
     _commands=$(echo $_commands | tr '[:space:]' ' ')
@@ -131,7 +258,7 @@ EOF
 
 
 
-function config_firefox () {
+function config_template_firefox () {
     declare _vm=$1
     declare _commands
     declare _f
@@ -139,7 +266,7 @@ function config_firefox () {
     notify 2 "--config_firefox _appvm:$_vm"
 
     for _f in ls config/configFirefox/; do
-        qvm-copy-to-vm $_template $_f
+        qvm-copy-to-vm $_vm $_f
     done
 
     qvm-run \
@@ -204,43 +331,6 @@ function create_vpn () {
         $_vpnappdvm \
         "bash /tmp/configure_vpn_client"
     qvm-shutdown $_vpnappdvm 
-}
-
-
-function create_appvm () {
-    declare _appvm=$1
-    declare _configs=(${2//;/ })
-
-    # 0 type;1 template;2 lable;3 maxmem;4 memory;
-    # 5 storage;6 vCPUs;7 network;8 dvm"
-
-    notify 2 "--create_appvm _appvm:$_appvm, _template:${_configs[1]}"
-    notify 2 "--create_appvm ${_configs[@]}"
-    
-    qvm-create \
-        --class ${_configs[0]} \
-        --template ${_configs[1]} \
-        --label ${_configs[2]} \
-        --prop=maxmem=${_configs[3]} \
-        --prop=memory=${_configs[4]} \
-        --prop=vcpus=${_configs[6]} \
-        $_appvm
-
-    qvm-prefs $_appvm qrexec_timeout 200
-
-    if [[ ${_configs[5]} != "x" ]]; then
-        qvm-volume extend $_appvm:private ${_configs[5]}mb
-    fi
-    
-    if [[ ${_configs[7]} == "x" ]]; then
-        qvm-prefs $_appvm netvm ""
-    else
-        qvm-prefs $_appvm netvm ${_configs[7]} 
-    fi
-    
-    if [[ ${_configs[8]} -eq "1" ]]; then
-        qvm-prefs $_appvm template_for_dispvms True
-    fi
 }
 
 
@@ -402,50 +492,6 @@ function create_gpg () {
 
 
 
-function create_dev () {
-    declare _vm
-
-    TEMPLATE=${VM_TEMPLATE_NAMES[dev]}
-    SOFTWARE=${VM_SOFT[dev]}
-    create_template $TEMPLATE $_MASTERTEMPLATE $SOFTWARE
-
-    for _vm in \
-        dev \
-        learn;
-    do
-        create_appvm $_vm ${VM_CONFIG[$_vm]}
-        config_user $_vm
-        config_firefox $_vm
-
-        for _f in \
-            appendPDF \
-            doublePDF \
-            img2pdf \
-            randomChars.py;
-        do
-            qube_copy_file \
-                $_vm \
-                "root" \
-                "utilities/$_f" \
-                "/usr/local/bin/$_f"
-        done
-        for _f in \
-            python3_install \
-            go_install; 
-        do
-            qube_copy_file \
-                $_vm \
-                "user" \
-                "config/$_f" \
-                "/home/user/$_f"
-        done
-
-        qube_remove_incomming $_vm
-        qvm-shutdown $_vm
-    done
-}
-
-
 
 function create_congy () {
     declare _vm
@@ -569,24 +615,22 @@ function create_min () {
 
 
 function main () {
-    declare ACTION
-    declare VM
+    declare _action
+    declare _vm
+    declare _make_apps=0
 
-    while getopts ":cut:a:" opt; do
+    while getopts ":c:u:a" opt; do
         case $opt in
             c)
-                ACTION="create"
+                _action="create"
+                _vm=$OPTARG
                 ;;
             u)
-                ACTION="update"
-                ;;
-            t)
-                VMTYPE="template"
-                VM=$OPTARG
+                _action="update"
+                _vm=$OPTARG
                 ;;
             a)
-                VMTYPE="app"
-                VM=$OPTARG
+                _make_apps=1
                 ;;
             :)
                 echo "Option -$OPTARG requires argument"
@@ -599,46 +643,34 @@ function main () {
         esac
     done
 
-
-    if [ "$ACTION" == "" ] || [ "$VM" == "" ]; then
+    if [ "$_action" == "" ] || [ "$_vm" == "" ]; then
         print_help
     fi
 
-    if [ "$DEBUG" ]; then echo "--VM:$VM ACTION:$ACTION"; fi
+    if [ "$_vm" != "all" ] && [ ! "${VM_TEMPLATE_NAMES[$_vm]+_}" ]; then 
+        notify 2 "ERROR: unknown vm $_vm"
+        exit 1
+    fi
 
-    case $ACTION in 
+    notify 2 "--main : template:$_vm, action:$_action, appvms:$_make_apps"
+
+    TEMPLATE=${VM_TEMPLATE_NAMES[$_vm]}
+    SOFTWARE=${VM_SOFT[$_vm]}
+
+    case $_action in 
         create)
-            case $VMTYPE in
-                template)
-                    TEMPLATE=${VM_TEMPLATE_NAMES[$VM]}
-                    SOFTWARE=${VM_SOFT[$VM]}
 
-                    create_template $TEMPLATE $SOFTWARE
-                    template_install_additions $VM
-                    ;;
-                app)
-                    create_app_vm $TEMPLATE
-                    ;;
-            esac
+            create_template $TEMPLATE $SOFTWARE
+            template_install_additions $_vm $_make_apps
             ;;
         update)
-            case $VMTYPE in
-                template)
-                    TEMPLATE=${VM_TEMPLATE_NAMES[$VM]}
-                    qube_update $TEMPLATE
-                    ;;
-                app)
-                    echo "Only Template VMs can be updated"
-                    print_help
-                    ;;
-            esac
+            qube_update $TEMPLATE
             ;;
         *) 
-            echo "Unknown action: $ACTION"
+            echo "Unknown action: $_action"
             print_help
             ;;
     esac
-
 
 }
 
@@ -648,19 +680,19 @@ declare -A VM_SOFT
 declare -A VM_TEMPLATE_NAMES
 declare -A VM_CONFIG
 
-VM_TEMPLATE_NAMES=(
-    [debian]=$_MASTER_DEBIAN_TEMPLATE
-    [fedora]=$_MASTER_FEDORA_TEMPLATE
-    [congy]=$_MASTER_DEBIAN_TEMPLATE-congy
-    [dev]=$_MASTER_DEBIAN_TEMPLATE-dev
-    [dvm]=$_MASTER_FEDORA_TEMPLATE-dvm
-    [media]=$_MASTER_DEBIAN_TEMPLATE-media
-    [min]=$_MASTER_DEBIAN_TEMPLATE-min
-    [plus]=$_MASTER_DEBIAN_TEMPLATE-plus
-    [printer]=$_MASTER_DEBIAN_TEMPLATE-printer
-    [usb]=$_MASTER_FEDORA_TEMPLATE-usb
-    [zoom]=$_MASTER_DEBIAN_TEMPLATE-zoom
-    )
+VM_TEMPLATE_NAMES=( 
+    [debian]="$_MASTER_DEBIAN_TEMPLATE:"
+    [fedora]="$_MASTER_FEDORA_TEMPLATE:"
+    [congy]="$_MASTER_DEBIAN_TEMPLATE:congy"
+    [dev]="$_MASTER_DEBIAN_TEMPLATE:dev2"
+    [dvm]="$_MASTER_FEDORA_TEMPLATE:dvm"
+    [media]="$_MASTER_DEBIAN_TEMPLATE:media"
+    [min]="$_MASTER_DEBIAN_TEMPLATE:min"
+    [plus]="$_MASTER_DEBIAN_TEMPLATE:plus"
+    [printer]="$_MASTER_DEBIAN_TEMPLATE:printer"
+    [usb]="$_MASTER_FEDORA_TEMPLATE:usb"
+    [zoom]="$_MASTER_DEBIAN_TEMPLATE:zoom"
+)
 
 VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
     [fin]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;1024;400;9216;1;x;0"
@@ -669,7 +701,7 @@ VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
     [work]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;20480;1;sys-firewall;0"
     [media]="AppVM;${VM_TEMPLATE_NAMES[media]};green;8192;1024;30720;2;sys-firewall;0"
     [epub]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;2000;500;50176;1;sys-firewall;0"
-    [dev]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;sys-firewall;0"
+    [dev2]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;x;0"
     [learn]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;sys-firewall;0"
     [congy]="AppVM;${VM_TEMPLATE_NAMES[congy]};orange;4000;400;x;2;sys-firewall;0"
     [zoom]="AppVM;${VM_TEMPLATE_NAMES[zoom]};orange;4000;400;x;3;sys-firewall;1"
@@ -777,12 +809,19 @@ EOF
         eog
         nautilus
         openfortivpn
+        gvim
         remmina
 EOF
     )
 )
 
 
+main "$@"
+
+
+
+
+#---------------------------------------------------------------------
 function old () {
     # action: create, update, delete
     ACTION=''
@@ -981,5 +1020,7 @@ function old () {
     echo "...done"
 }
 
-main "$@"
+
+
+
 
