@@ -56,6 +56,7 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
     gnome-terminal
     hangouts
     hostnames
+    insperity
     kodi
     nautilus
     postTrello
@@ -63,6 +64,7 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
     xterm
     ..............................
     scan
+    vpn-ro
     vpn
     ping
     shutdown
@@ -147,10 +149,7 @@ function firefox_work () {
     declare _urls=$(tr -s [:space:] ' ' <<EOF
         http://workflowy.com/login/
         https://trello.com/login
-        https://stackoverflow.com/users/login
-        https://datascience4sd.slack.com
-        https://opensandiego.slack.com/
-        https://crisismapperscovid-19.slack.com/
+        https://events.hackster.io/xcellent
 EOF
     )
     qvm_firefox $__DVM "$_urls" &
@@ -317,6 +316,7 @@ function launcher_main () {
         case $_app_selected in
             # web bookmarks
            '<pass>')
+                declare _loginfile="logins_2021"
                 declare _passstring=$(zenity_fix \
                     --entry \
                     --title="Pass:")
@@ -325,7 +325,7 @@ function launcher_main () {
                         qvm-run \
                         $__qvm_run_options \
                         gpg \
-                        "\"gnome-terminal --geometry=115x10 -e 'bash -c \\\"grep -i $_passstring logins_2020;bash\\\" '\""
+                        "\"gnome-terminal --geometry=115x10 -e 'bash -c \\\"grep -i $_passstring $_loginfile;bash\\\" '\""
 
                 fi
                 ;;
@@ -425,6 +425,16 @@ function launcher_main () {
                     qvm_chrome usb03 "https://hangouts.google.com"
                 ;;
 
+            insperity)
+                safe_execute qvm_firefox $__DVM https://insperity.com
+                declare _loginfile="logins_2021"
+                safe_execute_vm gpg \
+                    qvm-run \
+                    $__qvm_run_options \
+                    gpg \
+                    "\"gnome-terminal --geometry=115x10 -e 'bash -c \\\"grep -i insperity $_loginfile;bash\\\" '\""
+                ;;
+
             calibre)
                 safe_execute_vm epub \
                     qvm-run $__qvm_run_options epub "calibre"
@@ -444,6 +454,10 @@ function launcher_main () {
                     $__qvm_run_options \
                     --dispvm=printer-dvm \
                     "xterm -e scanBro"
+                ;;
+            vpn-ro)
+                safe_execute_vm sys-vpn-ro \
+                    qvm-run $__qvm_run_options sys-vpn-ro "'xterm -e watch -cd -n 2 ip addr'"
                 ;;
             vpn)
                 qube_vpn
