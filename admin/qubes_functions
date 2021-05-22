@@ -45,6 +45,8 @@ function qube_exists () {
 
     (qvm-ls --raw-list | grep -e "^$_vm$") && return
     
+}
+
 
 
 function qube_get_distribution () {
