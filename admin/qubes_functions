@@ -43,17 +43,8 @@ function qube_get_state () {
 function qube_exists () {
     declare _vm=$1
 
-    qvm-ls --raw-list \
-        | grep -e "^$_vm$" \
-        > /dev/null
-
-    if [[ $? -eq 0 ]]; then
-        echo "exists"
-    else
-        echo ""
-    fi
-}
-
+    (qvm-ls --raw-list | grep -e "^$_vm$") && return
+    
 
 
 function qube_get_distribution () {
