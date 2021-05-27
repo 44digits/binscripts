@@ -63,6 +63,38 @@ function template_name () {
 }
 
 
+function create_all_templates () {
+    declare _vm
+
+    notify 2 "--create_all_templates"
+    for _vm in "${!VM_TEMPLATE_NAMES[@]}"; do
+        _templatename=${VM_TEMPLATE_NAMES[$_vm]}
+        _softwarelist=${VM_SOFT[$_vm]}
+
+        if create_template $_templatename $_softwarelist; then
+            template_install_additions $_vm
+        fi
+    done
+
+}
+
+
+function update_all_templates () {
+    declare _vm 
+    declare _templateconfig
+    declare _templatename
+
+    notify 2 "--update_all_templates"
+    for _vm in "${!VM_TEMPLATE_NAMES[@]}"; do
+        _templateconfig=${VM_TEMPLATE_NAMES[$_templatevm]}
+        _templatename=$(template_name $_templateconfig)
+        qube_update $_templatename
+    done
+
+}
+
+
+
 
 function create_template () {
     declare _templateconfig=$1
@@ -71,9 +103,10 @@ function create_template () {
     declare _template=$(template_name $_templateconfig)
 
     notify 1 "--create_template : _template:$_template, _software:$_software"
-
-    if [[ $(qube_exists $_template) ]]; then
+    
+    if qube_exists $_template; then
         notify 2 "--create_template : exists _template:$_template"
+        return 1  #false
 
     else
         notify 2 "--create_template : creating _template:$_template"
@@ -91,40 +124,29 @@ function template_install_additions () {
 
     notify 2 "--template_install_additions: $_vm"
     case $_vm in
-        congy)
-            create_congy_template
+        all)
             ;;
         debian)
-            echo "ERROR: cannot create debian"
-            exit 0
-            ;;
-        dev)
-            build_dev_template $_vm
-            ;;
-        dvm)
-            build_system_dvm
             ;;
         fedora)
-            echo "ERROR: cannot create fedora"
-            exit 0
+            ;;
+        congy)
+            ;;
+        dev)
+            ;;
+        dvm)
             ;;
         media)
-            echo "building media"
             ;;
         min)
-            echo "building media"
             ;;
         plus)
-            echo "building media"
             ;;
         printer)
-            build_printer_dvm
             ;;
         usb)
-            echo "building media"
             ;;
         zoom)
-            echo "building media"
             ;;
         *)
             echo "ERROR: template_install_additions: unknown vm $_vm"
@@ -140,17 +162,86 @@ function appvm_install_additions () {
 
     notify 2 "--appvm_install_additions: $_appvm"
     case $_appvm in
+        all)
+            build_dev_appvm
+            ;;
         congy)
-            create_congy_appvm $_appvm
             ;;
         dev)
-            build_dev_appvm $_appvm
+            build_dev_appvm
+            ;;
+        congy)
+            ;;
+        dev2)
+            ;;
+        epub)
+            ;;
+        fedora-dvm)
+            ;;
+        files)
+            ;;
+        fin)
+            ;;
+        gpg)
+            ;;
+        learn)
+            ;;
+        media)
+            ;;
+        media-dvm)
+            ;;
+        plus-dvm)
+            ;;
+        printer-dvm)
+            ;;
+        sys-vpn-ro)
+            ;;
+        usb)
+            ;;
+        vpn-dvm)
+            ;;
+        vpn-dvm-big)
+            ;;
+        work)
+            ;;
+        zoom)
             ;;
         *)
             echo "ERROR: appvm_install_additions: unknown vm $_appvm"
             exit 1
             ;;
     esac
+}
+
+
+
+function create_all_appvms () {
+    declare _templatevm=$1
+    declare _appvm 
+    declare _appconfig
+    declare _configs
+    declare _templatename
+
+    notify 2 "--create_all_appvms, _template:$_templatevm"
+    if [[ "$_templatevm" == "all" ]]; then
+        for _appvm in "${!VM_CONFIG[@]}"; do
+            if create_appvm $_appvm ${VM_CONFIG[$_appvm]}; then
+                appvm_install_additions $_appvm
+            fi
+        done
+    else
+        for _appvm in "${!VM_CONFIG[@]}"; do
+            _appconfig=${VM_CONFIG[$_appvm]}
+            _configs=(${_appconfig//;/ })
+            _templatename="${_configs[1]}"
+
+            if [[ "${VM_TEMPLATE_NAMES[$_templatevm]}" == "$_templatename" ]]; then
+                if create_appvm $_appvm ${VM_CONFIG[$_appvm]}; then
+                    appvm_install_additions $_appvm
+                fi
+            fi
+        done
+    fi
 }
 
 
@@ -171,11 +262,11 @@ function create_appvm () {
     # 0 type;1 template;2 lable;3 maxmem;4 memory;
     # 5 storage;6 vCPUs;7 network;8 dvm"
 
-    notify 2 "--create_appvm _appvm:$_appvm, _template:${_configs[1]}"
-    notify 2 "--create_appvm ${_configs[@]}"
-    
+    notify 2 "--create_appvm _appvm:$_appvm ${_configs[@]}"
+
     if [[ $(qube_exists $_appvm) ]]; then
         notify 2 "--create_appvm: exists _template:$_appvm"
+        return 1  #false
 
     else
         qvm-create \
@@ -206,9 +297,9 @@ function create_appvm () {
 }
 
 
-function build_dev () {
+function build_dev_appvm () {
     declare _vm=$1
-    notify 2 "--build_dev $_vm"
+    notify 2 "--build_dev_appvm $_vm"
 
     declare _utility_list
     read -r -d '' utility_list <<EOF
@@ -546,13 +637,13 @@ function create_gpg () {
 
 
 
-
 function create_congy_template () {
     declare _vm
     declare _template
     declare _software
 
     notify 2 "--create_congy_template"
+    $_template=${VM_TEMPLATE_NAMES[congy]}
 
     qube_copy_file \
         $_template \
@@ -675,6 +766,8 @@ function main () {
     declare _action
     declare _appvm
     declare _templatevm
+    declare _templatename
+    declare _softwarelist
 
     while getopts "lcut:a:" opt; do
         case $opt in
@@ -704,6 +797,8 @@ function main () {
         esac
     done
 
+    echo "opt: $opt, action:$_action, tpl:$_templatevm, app:$_appvm"
+
     if [ -z "$_action" ] || [ -z "$_templatevm" ]; then
         print_help
     fi
@@ -722,23 +817,40 @@ function main () {
 
     notify 2 "--main : action:$_action, template:$_templatevm, appvm:$_appvm"
 
-    TEMPLATE=${VM_TEMPLATE_NAMES[$_templatevm]}
-    SOFTWARE=${VM_SOFT[$_templatevm]}
-
     case $_action in 
         create)
-            create_template $TEMPLATE $SOFTWARE
-            template_install_additions $templatevm
-            if [ ! -z "_appvm" ]; then
-                create_appvm $_appvm ${VM_CONFIG[$_appvm]}
-                appvm_install_additions $_appvm
+            if [[ "$_templatevm" == "all" ]]; then
+                create_all_templates
+            else
+                _templatename=${VM_TEMPLATE_NAMES[$_templatevm]}
+                _softwarelist=${VM_SOFT[$_templatevm]}
+
+                if create_template $_templatename $_softwarelist; then
+                    template_install_additions $_templatevm
+                fi
+            fi
+
+            if [ -n "$_appvm" ]; then
+                if [[ "$_appvm" == "all" ]]; then
+                    create_all_appvms $_templatevm
+                else
+                    if create_appvm $_appvm ${VM_CONFIG[$_appvm]}; then
+                        appvm_install_additions $_appvm
+                    fi
+                fi
             fi
             ;;
         update)
-            qube_update $TEMPLATE
+            if [[ "$_templatevm" == "all" ]]; then
+                update_all_templates
+            else
+                _templateconfig=${VM_TEMPLATE_NAMES[$_templatevm]}
+                _templatename=$(template_name $_templateconfig)
+                qube_update $_templatename
+            fi
             ;;
         *) 
-            echo "Unknown action: $_action"
+            echo "ERROR: unknown action: $_action"
             print_help
             ;;
     esac
