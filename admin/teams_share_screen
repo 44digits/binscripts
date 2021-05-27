@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# teams_share_screen
+#   delete blank windows created by teams
+#
+# date: 2020.10.15
+
+
+echo "teams_share_screen"
+for w in $(xdotool search --name rect-overlay); do
+    echo "... deleting $w"
+    xdotool windowunmap $w
+done
+
+echo "done."
+
+
