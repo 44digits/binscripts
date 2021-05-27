@@ -178,6 +178,11 @@ function qube_update () {
     _ostype=$( qube_get_distribution $_vm )
     notify 2 "qube_update: vm:$_vm ($_ostype)"
 
+
+    ##### temporary #####
+    return 0
+
+
     case $_ostype in
         "debian")
             _commands=$(cat <<EOF
@@ -212,6 +217,10 @@ function qube_install_software () {
     
     _ostype=$( qube_get_distribution $_vm )
     notify 2 "qube_install_software: vm:$_vm ostype:$_ostype software:$_software"
+
+    ##### temporary #####
+    return 0
+
 
     # software list delineated by '&'
     declare _softwarelist=$(echo $_software | tr '&' ' ')
