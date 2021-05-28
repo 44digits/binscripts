@@ -14,7 +14,9 @@ declare __qvm_run_options="${__qvm_run_options:-"-p --color-stderr=37"}"
 declare __dialogheight=600
 
 read -r -d '' _qubebackuplist <<EOF
+    congy5
     dev
+    email
     epub
     files
     fin
@@ -91,8 +93,10 @@ function detach_device () {
 function main () {
     declare _cmd
     declare _vm
+    declare _xx
 
     notify "Qube Backup starting..."
+    notify "... shutdown email"
 
     for _vm in $_qubebackuplist; do
         notify "-- $_vm: starting backup"
@@ -104,13 +108,12 @@ function main () {
                 --delete
                 --ignore-errors
                 -av
-                --filter="- *.git*"
-                --filter="- *.iso"
-                --filter="- *.log"
+                --filter="- *[Cc]ache*"
+                --filter="- *[Tt]humbnail*"
                 --filter="- */Trash/*"
-                --filter="- *cache*"
-                --filter="- *humbnail*"
                 --filter="- *venv*"
+                --filter="- *.iso"
+                --filter="- *.git*"
                 /home/user/
                 /mnt/backup/bak/qubes/$_vm/
 EOF
@@ -122,6 +125,13 @@ EOF
     done
 
     notify "...Qube Backup finished"
+    notify "Stop raid array?"
+    read _xx
+    case $_xx in
+        [Yy]* ) sudo mdadm --stop --scan;;
+        * ) echo "";;
+    esac
+
 }
 
 
