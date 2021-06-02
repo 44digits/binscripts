@@ -72,6 +72,33 @@ EOF
 
 
 
+function qube_get_disposable_vm () {
+    declare _disp_template=$1
+    declare _disp_list_pre=$(qvm-ls --raw-list --running | grep disp)
+    declare _disp_list_post
+    declare _disp_count_current=$(echo "$_disp_list_pre" | wc -w)
+    declare _disp_count_final=$(( $_disp_count_current +1 ))
+    declare _disp_vm
+
+    qvm-run --dispvm=$_disp_template "xterm" >/dev/null 2>&1 &
+
+    while [[ $_disp_count_current != $_disp_count_final ]]; do
+        sleep 2
+        _disp_count_current=$(qvm-ls --raw-list --running \
+            | grep disp \
+            | wc -w )
+    done
+
+    _disp_list_post=$(qvm-ls --raw-list --running | grep disp)
+    _disp_vm=$(comm -13 \
+        <(echo $_disp_list_pre | tr ' ' '\n') \
+        <(echo $_disp_list_post | tr ' ' '\n'))
+
+    echo "$_disp_vm"
+}
+
+
+
 function qube_get_ip () {
     declare _vm=$1
     declare _ip
@@ -180,7 +207,7 @@ function qube_update () {
 
 
     ##### temporary #####
-    return 0
+    #return 0
 
 
     case $_ostype in
@@ -219,7 +246,7 @@ function qube_install_software () {
     notify 2 "qube_install_software: vm:$_vm ostype:$_ostype software:$_software"
 
     ##### temporary #####
-    return 0
+    #return 0
 
 
     # software list delineated by '&'
