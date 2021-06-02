@@ -302,7 +302,7 @@ function build_dev_appvm () {
     notify 2 "--build_dev_appvm $_vm"
 
     declare _utility_list
-    read -r -d '' utility_list <<EOF
+    read -r -d '' _utility_list <<EOF
         appendPDF
         doublePDF
         img2pdf
