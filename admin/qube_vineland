@@ -1,0 +1,60 @@
+#!/bin/bash
+#
+# qube_vineland
+#
+# create connection to vineland
+#
+# Date: 2021.05.31
+#
+
+declare _VINELANDCONFIGDIR="$(dirname "${BASH_SOURCE[0]}")/utilities/vineland"
+declare _SOFTWARELIST="remmina"
+declare _REMMINACONFIGDIR="/home/user/.local/share/remmina"
+declare _DVM=fedora-30-dvm
+
+source $(dirname "$0")/qubes_functions
+
+declare _vineland_configs 
+read -r -d '' _vineland_configs <<EOF
+    vineland_connect
+    vineland_connect.secrets
+    vineland_localhost.remmina
+EOF
+
+
+
+function main () {
+
+    declare _disp
+    _disp=$(qube_get_disposable_vm "$_DVM")
+
+    qube_install_software $_disp $_SOFTWARELIST
+    notify 2 "--main: installed $_SOFTWARELIST"
+
+    declare _f
+    for _f in $_vineland_configs ; do
+        qube_copy_file \
+            $_disp \
+            "user" \
+            "$_VINELANDCONFIGDIR/$_f" \
+            "/home/user/$_f"
+    done
+
+    declare _commands
+    _commands=$(cat <<EOF
+        mkdir -p $_REMMINACONFIGDIR
+        mv /home/user/vineland_localhost.remmina $_REMMINACONFIGDIR
+        chmod +x /home/user/vineland_connect
+EOF
+)
+    qvm-run $_disp "remmina" >/dev/null 2>&1 &
+    qvm-run $_disp "gnome-terminal -e /home/user/vineland_connect" >/dev/null 2>&1 &
+
+    qube_run_commands $_disp "user" "$_commands"
+
+}
+
+main
+
+
+
