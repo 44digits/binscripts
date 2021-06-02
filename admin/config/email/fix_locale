@@ -1,0 +1,6 @@
+#!/bin/bash
+
+ln -s /usr/share/i18n/locales/en_DK /usr/share/i18n/locales/en_SE
+echo 'en_SE.UTF-8 UTF-8' | tee -a /etc/locale.gen
+locale-gen
+

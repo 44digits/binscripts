@@ -1,0 +1,5 @@
+#export LC_TIME="lt_LT.UTF-8" && thunderbird
+#export LC_TIME="root.UTF-8" && thunderbird
+#export LC_TIME="lt_LT.UTF-8" && export LANG="en_US.UTF-8" && thunderbird
+#export LC_TIME="en_DK.UTF-8" && thunderbird
+export LC_TIME="en_SE.UTF-8" && thunderbird

@@ -1,0 +1,10 @@
+#!/bin/bash
+
+declare _vm=$1
+declare _url=$2
+
+echo "$@" >> /tmp/browser.log
+
+/usr/bin/qvm-open-in-vm $_vm $_url
+
+
