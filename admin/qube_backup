@@ -57,7 +57,7 @@ function attach_device () {
     qvm-device block attach $_vm $_device
     _deviceid=$(get_deviceid $_vm)
     qvm-run $__qvm_run_options -u root $_vm "chmod a+rwx $_mountpoint"
-    qvm-run $__qvm_run_options -u root $_vm "mount /dev/$_deviceid $_mountpoint"
+    qvm-run $__qvm_run_options -u root $_vm "mount -o sync /dev/$_deviceid $_mountpoint"
 
     declare _mounted=$(qvm-run $__qvm_run_options $_vm "grep $_mountpoint /proc/mounts")
     if [[ -z $_mounted ]]; then
@@ -98,7 +98,8 @@ function main () {
     notify "Qube Backup starting..."
     notify "... shutdown email"
 
-    for _vm in $_qubebackuplist; do
+    #for _vm in $_qubebackuplist; do
+    for _vm in "$@"; do
         notify "-- $_vm: starting backup"
         
         _deviceid=$(attach_device $_vm $_backupdevice $_mountpoint)
@@ -113,7 +114,6 @@ function main () {
                 --filter="- */Trash/*"
                 --filter="- *venv*"
                 --filter="- *.iso"
-                --filter="- *.git*"
                 /home/user/
                 /mnt/backup/bak/qubes/$_vm/
 EOF
