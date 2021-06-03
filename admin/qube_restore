@@ -1,0 +1,130 @@
+#!/bin/bash
+
+# qube_restore
+# restore qubes from raid 
+#
+# Date: 2021.06.03
+
+
+
+declare _backupdevice="dom0:md127"
+declare _mountpoint="/mnt/backup"
+declare _qubebackuplist
+declare __qvm_run_options="${__qvm_run_options:-"-p --color-stderr=37"}"
+declare __dialogheight=600
+
+set -e 
+
+
+
+function notify () {
+    cat <<< "$@" 1>&2
+    #:
+}
+
+
+
+function get_deviceid () {
+    declare _vm=$1
+    declare _deviceid
+    _deviceid=$(qvm-run $__qvm_run_options $_vm "lsblk | tac | grep -m 1 . | cut -d' ' -f 1")
+
+    notify "get_deviceid: $_deviceid"
+    echo "$_deviceid"
+}
+
+
+
+function attach_device () {
+    declare _vm=$1
+    declare _device=$2
+    declare _mountpoint=$3
+    declare _deviceid
+
+    notify "attach_device: qvm-device block attach $_vm $_device (on $_mountpoint)"
+    # perform run action to wake up qube
+    qvm-run $__qvm_run_options -u root $_vm "mkdir -p $_mountpoint"
+
+    qvm-device block attach $_vm $_device
+    _deviceid=$(get_deviceid $_vm)
+    qvm-run $__qvm_run_options -u root $_vm "chmod a+rwx $_mountpoint"
+    qvm-run $__qvm_run_options -u root $_vm "mount -o sync /dev/$_deviceid $_mountpoint"
+
+    declare _mounted=$(qvm-run $__qvm_run_options $_vm "grep $_mountpoint /proc/mounts")
+    if [[ -z $_mounted ]]; then
+        notify "ERROR: attach_device /dev/$_deviceid not mounted"
+        exit 1
+    else
+        notify "attach_device: /dev/$_deviceid"
+        echo "/dev/$_deviceid"
+    fi
+}
+
+
+
+function detach_device () {
+    declare _vm=$1
+    declare _device=$2
+    declare _mountpoint=$3
+    declare _xx
+
+    qvm-run $__qvm_run_options $_vm "sync"
+    sleep 2
+    notify "detach_device: continue?"
+    read _xx
+
+    qvm-run $__qvm_run_options -u root $_vm "umount $_mountpoint"
+    sleep 2
+    qvm-device block detach $_vm $_device
+    notify "detach_device: $_vm $_device"
+}
+
+
+
+function main () {
+    declare _cmd
+    declare _vm
+    declare _xx
+
+    notify "Qube Restore starting..."
+
+    for _vm in "$@"; do
+        notify "-- $_vm: starting restore"
+        
+        _deviceid=$(attach_device $_vm $_backupdevice $_mountpoint)
+
+        _cmd=$(tr -s [:space:] ' ' <<EOF
+            rsync
+                --delete
+                --ignore-errors
+                -av
+                --filter="- *[Cc]ache*"
+                --filter="- *[Tt]humbnail*"
+                --filter="- */Trash/*"
+                --filter="- *venv*"
+                --filter="- *.iso"
+                /mnt/backup/bak/qubes/$_vm/
+                /home/user/
+EOF
+            )
+        qvm-run $__qvm_run_options $_vm "$_cmd"
+
+        detach_device $_vm $_backupdevice $_mountpoint
+        notify "-- $_vm: finished backup"
+    done
+
+    notify "...Qube Backup finished"
+    notify "Stop raid array?"
+    read _xx
+    case $_xx in
+        [Yy]* ) sudo mdadm --stop --scan;;
+        * ) echo "";;
+    esac
+
+}
+
+
+
+main
+
+
