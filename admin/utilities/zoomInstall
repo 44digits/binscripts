@@ -1,0 +1,7 @@
+#!/bin/bash
+
+ZOOM="zoom_amd64_Version 5.5.2-7011.0206.deb"
+
+dpkg -i "$ZOOM"
+apt-get install -yf
+

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+dnf install Downloads/teams*.rpm
+
+
