@@ -1,0 +1,10 @@
+#!/bin/bash
+
+#/usr/bin/teams
+/usr/bin/slack -s &
+/usr/bin/remmina &
+/usr/bin/firefox &
+gvim /home/user/firstDay.notes &
+
+
+
