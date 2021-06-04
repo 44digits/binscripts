@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# qube_mgmt
+# qube_admin
 #
 # automate the creation and updating of qubes
 #
@@ -65,13 +65,14 @@ function template_name () {
 
 function create_all_templates () {
     declare _vm
+    declare _softwarelist
 
     notify 2 "--create_all_templates"
     for _vm in "${!VM_TEMPLATE_NAMES[@]}"; do
-        _templatename=${VM_TEMPLATE_NAMES[$_vm]}
+        _templateconfig=${VM_TEMPLATE_NAMES[$_vm]}
         _softwarelist=${VM_SOFT[$_vm]}
 
-        if create_template $_templatename $_softwarelist; then
+        if create_template $_templateconfig $_softwarelist; then
             template_install_additions $_vm
         fi
     done
@@ -83,12 +84,16 @@ function update_all_templates () {
     declare _vm 
     declare _templateconfig
     declare _templatename
+    declare _softwarelist
 
     notify 2 "--update_all_templates"
     for _vm in "${!VM_TEMPLATE_NAMES[@]}"; do
-        _templateconfig=${VM_TEMPLATE_NAMES[$_templatevm]}
+        _templateconfig=${VM_TEMPLATE_NAMES[$_vm]}
         _templatename=$(template_name $_templateconfig)
+        _softwarelist=${VM_SOFT[$_vm]}
+
         qube_update $_templatename
+        qube_install_software $_templatename $_softwarelist
     done
 
 }
@@ -127,10 +132,13 @@ function template_install_additions () {
         all)
             ;;
         debian)
+            # base template - no additions
             ;;
         fedora)
+            # base template - no additions
             ;;
         congy)
+            create_congy_template $_vm
             ;;
         dev)
             ;;
@@ -163,16 +171,14 @@ function appvm_install_additions () {
     notify 2 "--appvm_install_additions: $_appvm"
     case $_appvm in
         all)
-            build_dev_appvm
+            build_dev_appvm $_appvm
+            build_congy_appvm $_appvm
             ;;
         congy)
-            ;;
-        dev)
-            build_dev_appvm
-            ;;
-        congy)
+            build_congy_appvm $_appvm
             ;;
         dev2)
+            build_dev_appvm $_appvm
             ;;
         epub)
             ;;
@@ -301,19 +307,18 @@ function build_dev_appvm () {
     declare _vm=$1
     notify 2 "--build_dev_appvm $_vm"
 
-    declare _utility_list
-    read -r -d '' _utility_list <<EOF
-        appendPDF
-        doublePDF
-        img2pdf
-        randomChars.py
-EOF
-
+    qvm-start --skip-if-running $_vm
+    sleep 1
 
     config_user $_vm
     config_user_firefox $_vm
 
-    for _f in _utility_list; do
+    for _f in \
+        appendPDF \
+        doublePDF \
+        img2pdf \
+        randomChars.py ;
+    do
         qube_copy_file \
             $_vm \
             "root" \
@@ -334,6 +339,134 @@ EOF
     qube_remove_incomming $_vm
     qvm-shutdown $_vm
 }
+
+
+
+function create_congy_template () {
+    declare _vm=$1
+    declare _templateconfig=${VM_TEMPLATE_NAMES[$_vm]}
+    declare _template=$(template_name $_templateconfig)
+    declare _debpath
+    declare _deb
+
+    notify 2 "--create_congy_template: $_template"
+
+
+    for _f in \
+        teams \
+        slack ;
+    do
+        _debpath=$(ls -t soft/$_f* | head -1)
+        _deb=${_debpath/soft\//}
+        qube_copy_file \
+            $_template \
+            "root" \
+            "soft/$_deb" \
+            "/home/user/Downloads/$_deb"
+        qvm-run \
+            $__qvm_run_options \
+            -u root \
+            $_template \
+            "dpkg -i /home/user/Downloads/$_deb" || true
+    done
+    qvm-run \
+        $__qvm_run_options \
+        -u root \
+        $_template \
+        "sudo apt-get install -yf"
+
+    qube_copy_file \
+        $_template \
+        "root" \
+        "config/congy/openfortivpn.service" \
+        "/etc/systemd/system/openfortivpn.service"
+    qvm-run \
+        $__qvm_run_options \
+        -u root \
+        $_template \
+        "chmod +x /etc/systemd/system/openfortivpn.service"
+    qvm-run \
+        $__qvm_run_options \
+        -u root \
+        $_template \
+        "systemctl enable openfortivpn"
+
+    qube_remove_incomming $_template
+    qvm-shutdown $_template
+}
+
+
+
+function build_congy_appvm () {
+    declare _vm=$1
+    declare _commands
+    declare _bashlines
+    declare _usb01=dom0:00_1d.0
+
+    qvm-prefs $_vm virt_mode pv
+    qvm-pci attach $_vm $_usb01 --persistent -o no-strict-reset=True
+
+    _commands=$(cat <<EOF
+        mkdir -p /rw/config/qubes-bind-dirs.d
+        mkdir -p /etc/openfortivpn
+EOF
+)
+    qube_run_commands $_vm "root" "$_commands"
+
+    qube_copy_file \
+        $_vm \
+        "root" \
+        "config/congy/vpn.config.secret" \
+        "/etc/openfortivpn/config"
+    qvm-run \
+        $__qvm_run_options \
+        -u root \
+        $_vm \
+        "chmod 600 /etc/openfortivpn/config"
+
+    qube_copy_file \
+        $_vm \
+        "root" \
+        "config/congy/50_user.conf" \
+        "/rw/config/qubes-bind-dirs.d/50_user.conf"
+
+    qube_copy_file \
+        $_vm \
+        "user" \
+        "config/congy/startup" \
+        "/home/user/startup"
+
+    _commands=$(cat <<EOF
+        mkdir -p /home/user/mounts/aross-d1
+        mkdir -p /home/user/.local/share/remmina
+        chmod +x /home/user/startup
+EOF
+)
+    qube_run_commands $_vm "user" "$_commands"
+    qube_copy_file \
+        $_vm \
+        "user" \
+        "config/congy/group_rdp_congy.remmina.secret" \
+        "/home/user/.local/share/remmina/group_rdp_congy.remmina"
+
+    config_user $_vm
+
+    _bashlines=$(cat <<EOF
+        alias aross-d1=\"sudo mount -t cifs -o username=aross //aross-d1.congruex.com/c$/Users/aross/Downloads /home/user/mounts/aross-d1 -o uid=1000,gid=1000\"
+        alias um-aross-d1=\"sudo umount /home/user/mounts/aross-d1\"
+EOF
+)
+    qube_append_file \
+        $_appvm \
+        "user" \
+        "/home/user/.bashrc" \
+        "$_bashlines"
+
+    qube_remove_incomming $_vm
+    #qvm-shutdown $_vm
+
+}
+
 
 
 function build_system_dvm () {
@@ -383,6 +516,7 @@ EOF
         "dotfiles/_screenrc" \
         "/home/user/.screenrc"
 }
+
 
 
 function config_user_firefox () {
@@ -637,65 +771,6 @@ function create_gpg () {
 
 
 
-function create_congy_template () {
-    declare _vm
-    declare _template
-    declare _software
-
-    notify 2 "--create_congy_template"
-    $_template=${VM_TEMPLATE_NAMES[congy]}
-
-    qube_copy_file \
-        $_template \
-        "root" \
-        "config/congy/vpn.config" \
-        "/etc/openfortivpn/config"
-    qvm-run \
-        $__qvm_run_options \
-        -u root \
-        $_template \
-        "chmod 600 /etc/openfortivpn/config"
-
-    qube_copy_file \
-        $_template \
-        "root" \
-        "config/congy/openfortivpn.service" \
-        "/etc/systemd/system/openfortivpn.service"
-    qvm-run \
-        $__qvm_run_options \
-        -u root \
-        $_template \
-        "systemctl enable openfortivpn"
-
-    qube_remove_incomming $_vm
-    qvm-shutdown $_vm
-}
-
-
-
-function create_congy_appvm () {
-    delcare _vm=congy
-
-    create_appvm $_vm ${VM_CONFIG[$_vm]}
-    config_user $_vm
-    qvm-run \
-        $__qvm_run_options \
-        -u user \
-        $_vm \
-        "mkdir -p /home/user/.local/share/remmina/"
-    qube_copy_file \
-        $_vm \
-        "user" \
-        "config/congy/group_rdp_congy.remmina.secret" \
-        "/home/user/.local/share/remmina/group_rdp_congy.remmina" 
-
-    qube_remove_incomming $_vm
-    qvm-shutdown $_vm
-
-}
-
-
-
 function create_min () {
     declare _vm
 
@@ -846,7 +921,11 @@ function main () {
             else
                 _templateconfig=${VM_TEMPLATE_NAMES[$_templatevm]}
                 _templatename=$(template_name $_templateconfig)
+                _softwarelist=${VM_SOFT[$_templatevm]}
+
                 qube_update $_templatename
+                qube_install_software $_templatename $_softwarelist
+                qvm-shutdown $_templatename
             fi
             ;;
         *) 
@@ -950,13 +1029,15 @@ EOF
     [min]=$(tr -s [:space:] '&' <<EOF
         eog
         evince
-        rsync
         gnucash
         gocryptfs
         libdbd-sqlite3
         nautilus
         pdftk
+        rsync
         scrypt
+        gpg
+        qubes-gpg-split
 EOF
     )
     [dev]=$(tr -s [:space:] '&' <<EOF
@@ -988,11 +1069,17 @@ EOF
 EOF
     )
     [congy]=$(tr -s [:space:] '&' <<EOF
+        cheese
+        chromium
+        cifs-utils
         eog
+        git
         nautilus
         openfortivpn
-        gvim
+        qubes-usb-proxy
         remmina
+        rsync
+        vim-gtk
 EOF
     )
 )

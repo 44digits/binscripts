@@ -11,7 +11,7 @@
 declare __qvm_run_options="${__qvm_run_options:-"-p --color-stderr=37"}"
 declare __notifylevel="${__notifylevel:-2}"
 
-
+declare FAST=0
 
 function notify () {
     declare _level=$1
@@ -207,7 +207,9 @@ function qube_update () {
 
 
     ##### temporary #####
-    #return 0
+    if [[ "$FAST" -ne 0 ]]; then
+        return 0
+    fi
 
 
     case $_ostype in
@@ -246,7 +248,9 @@ function qube_install_software () {
     notify 2 "qube_install_software: vm:$_vm ostype:$_ostype software:$_software"
 
     ##### temporary #####
-    #return 0
+    if [[ "$FAST" -ne 0 ]]; then
+        return 0
+    fi
 
 
     # software list delineated by '&'
