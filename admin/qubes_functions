@@ -207,7 +207,7 @@ function qube_update () {
 
 
     ##### temporary #####
-    if [[ "$FAST" -ne 0 ]]; then
+    if [ -n "$SKIPIT" ]; then
         return 0
     fi
 
@@ -248,7 +248,7 @@ function qube_install_software () {
     notify 2 "qube_install_software: vm:$_vm ostype:$_ostype software:$_software"
 
     ##### temporary #####
-    if [[ "$FAST" -ne 0 ]]; then
+    if [ -n "$SKIPIT" ]; then
         return 0
     fi
 
