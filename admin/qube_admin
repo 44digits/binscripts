@@ -35,7 +35,7 @@ function list_vm_names () {
     echo "App names:"
     echo "${!VM_CONFIG[@]}"
     echo
-    exit 1
+    exit 0
 }
 
 
@@ -897,10 +897,10 @@ function main () {
             if [[ "$_templatevm" == "all" ]]; then
                 create_all_templates
             else
-                _templatename=${VM_TEMPLATE_NAMES[$_templatevm]}
+                _templateconfig=${VM_TEMPLATE_NAMES[$_templatevm]}
                 _softwarelist=${VM_SOFT[$_templatevm]}
 
-                if create_template $_templatename $_softwarelist; then
+                if create_template $_templateconfig $_softwarelist; then
                     template_install_additions $_templatevm
                 fi
             fi
@@ -961,7 +961,7 @@ VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
     [dev2]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;x;0"
     [email]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;2000;600;15000;2;sys-firewall;0"
     [epub]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;2000;500;50000;1;sys-firewall;0"
-    [fedora-dvm]="AppVM;${VM_TEMPLATE_NAMES[system]};red;2000;600;x;2;sys-firewall;1"
+    [fedora-dvm]="AppVM;${VM_TEMPLATE_NAMES[fedora]};red;2000;600;x;2;sys-firewall;1"
     [files]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;800;400;150000;1;x;0"
     [fin]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;1024;400;x;1;x;0"
     [gpg]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;800;400;x;1;x;0"
@@ -970,8 +970,8 @@ VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
     [media]="AppVM;${VM_TEMPLATE_NAMES[media]};green;8192;1024;30720;2;sys-firewall;0"
     [plus-dvm]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;4096;400;5120;2;sys-firewall;1"
     [printer-dvm]="AppVM;${VM_TEMPLATE_NAMES[printer]};red;974;350;x;1;sys-firewall;1"
-    [sys-vpn-ca]="AppVM;${VM_TEMPLATE_NAMES[system]};orange;500;400;x;1;sys-net;0"
-    [sys-vpn-ro]="AppVM;${VM_TEMPLATE_NAMES[system]};orange;500;400;x;1;sys-net;0"
+    [sys-vpn-ca]="AppVM;${VM_TEMPLATE_NAMES[fedora]};orange;500;400;x;1;sys-net;0"
+    [sys-vpn-ro]="AppVM;${VM_TEMPLATE_NAMES[fedora]};orange;500;400;x;1;sys-net;0"
     [usb]="AppVM;${VM_TEMPLATE_NAMES[usb]};orange;4000;2000;22528;3;sys-firewall;0"
     [vpn-dvm-big]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;4000;400;28672;2;sys-vpn-ro;1"
     [vpn-dvm]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;4000;400;9216;2;sys-vpn-ro;1"
