@@ -231,6 +231,7 @@ function create_all_appvms () {
     notify 2 "--create_all_appvms, _template:$_templatevm"
     if [[ "$_templatevm" == "all" ]]; then
         for _appvm in "${!VM_CONFIG[@]}"; do
+            echo " -- tyring to create $_appvm"
             if create_appvm $_appvm ${VM_CONFIG[$_appvm]}; then
                 appvm_install_additions $_appvm
             fi
@@ -241,6 +242,8 @@ function create_all_appvms () {
             _configs=(${_appconfig//;/ })
             _templatename="${_configs[1]}"
 
+            echo " -- {VM_TEMPLATE_NAMES[\$_templatevm]}: ${VM_TEMPLATE_NAMES[$_templatevm]}"
+            echo " -- Templatename: $_templatename"
             if [[ "${VM_TEMPLATE_NAMES[$_templatevm]}" == "$_templatename" ]]; then
                 if create_appvm $_appvm ${VM_CONFIG[$_appvm]}; then
                     appvm_install_additions $_appvm
@@ -947,6 +950,13 @@ VM_TEMPLATE_NAMES=(
     [fedora]="$_MASTER_FEDORA_TEMPLATE:"
     [congy]="$_MASTER_DEBIAN_TEMPLATE:congy77"
     [dev]="$_MASTER_DEBIAN_TEMPLATE:dev77"
+)
+
+ORIG_VM_TEMPLATE_NAMES=( 
+    [debian]="$_MASTER_DEBIAN_TEMPLATE:"
+    [fedora]="$_MASTER_FEDORA_TEMPLATE:"
+    [congy]="$_MASTER_DEBIAN_TEMPLATE:congy77"
+    [dev]="$_MASTER_DEBIAN_TEMPLATE:dev77"
     [dvm]="$_MASTER_FEDORA_TEMPLATE:dvm77"
     [media]="$_MASTER_DEBIAN_TEMPLATE:media77"
     [min]="$_MASTER_DEBIAN_TEMPLATE:min77"
@@ -957,6 +967,11 @@ VM_TEMPLATE_NAMES=(
 )
 
 VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
+    [congy88]="AppVM;${VM_TEMPLATE_NAMES[congy]};orange;4000;400;x;2;sys-firewall;0"
+    [dev88]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;x;0"
+    )
+
+ORIG_VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
     [congy88]="AppVM;${VM_TEMPLATE_NAMES[congy]};orange;4000;400;x;2;sys-firewall;0"
     [dev88]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;x;0"
     [email88]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;2000;600;15000;2;sys-firewall;0"
