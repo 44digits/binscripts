@@ -12,6 +12,8 @@
 declare _MASTER_DEBIAN_TEMPLATE=debian-10
 declare _MASTER_FEDORA_TEMPLATE=fedora-32
 declare _CONFIGDIR="$(dirname $0)/config/"
+declare _UTILITYDIR="$(dirname $0)/utilities/"
+declare _SOFTWARE="$(dirname $0)/soft/"
 
 declare __notifylevel=2
 
@@ -38,6 +40,11 @@ function list_vm_names () {
     exit 0
 }
 
+
+
+####################################################################
+# Template functions
+#
 
 
 function template_master () {
@@ -129,8 +136,6 @@ function template_install_additions () {
 
     notify 2 "--template_install_additions: $_vm"
     case $_vm in
-        all)
-            ;;
         debian)
             # base template - no additions
             ;;
@@ -138,23 +143,31 @@ function template_install_additions () {
             # base template - no additions
             ;;
         congy)
-            create_congy_template $_vm
+            build_congy_template $_vm
             ;;
         dev)
+            build_dev_template $_vm
             ;;
         dvm)
+            build_dvm_template $_vm
             ;;
         media)
+            build_media_template $_vm
             ;;
         min)
+            build_min_template $_vm
             ;;
         plus)
+            build_plus_template $_vm
             ;;
         printer)
+            build_printer_template $_vm
             ;;
         usb)
+            build_usb_template $_vm
             ;;
         zoom)
+            build_zoom_template $_vm
             ;;
         *)
             echo "ERROR: template_install_additions: unknown vm $_vm"
@@ -165,60 +178,9 @@ function template_install_additions () {
 
 
 
-function appvm_install_additions () {
-    declare _appvm=$1
-
-    notify 2 "--appvm_install_additions: $_appvm"
-    case $_appvm in
-        all)
-            build_dev_appvm $_appvm
-            build_congy_appvm $_appvm
-            ;;
-        congy)
-            build_congy_appvm $_appvm
-            ;;
-        dev2)
-            build_dev_appvm $_appvm
-            ;;
-        epub)
-            ;;
-        fedora-dvm)
-            ;;
-        files)
-            ;;
-        fin)
-            ;;
-        gpg)
-            ;;
-        learn)
-            ;;
-        media)
-            ;;
-        media-dvm)
-            ;;
-        plus-dvm)
-            ;;
-        printer-dvm)
-            ;;
-        sys-vpn-ro)
-            ;;
-        usb)
-            ;;
-        vpn-dvm)
-            ;;
-        vpn-dvm-big)
-            ;;
-        work)
-            ;;
-        zoom)
-            ;;
-        *)
-            echo "ERROR: appvm_install_additions: unknown vm $_appvm"
-            exit 1
-            ;;
-    esac
-}
-
+####################################################################
+# Appvm functions
+#
 
 
 function create_all_appvms () {
@@ -306,6 +268,158 @@ function create_appvm () {
 }
 
 
+
+function appvm_install_additions () {
+    declare _appvm=$1
+
+    notify 2 "--appvm_install_additions: $_appvm"
+    case $_appvm in
+        congy88)
+            build_congy_appvm $_appvm
+            ;;
+        dev88)
+            build_dev_appvm $_appvm
+            ;;
+        email88)
+            build_email_appvm $_appvm
+            ;;
+        epub88)
+            build_epub_appvm $_appvm
+            ;;
+        fedora-dvm88)
+            build_fedoradvm_appvm $_appvm
+            ;;
+        files88)
+            build_files_appvm $_appvm
+            ;;
+        fin88)
+            build_fin_appvm $_appvm
+            ;;
+        gpg88)
+            build_gpg_appvm $_appvm
+            ;;
+        study88)
+            ;;
+        media88)
+            build_media_appvm $_appvm
+            ;;
+        printer-dvm88)
+            ;;
+        sys-vpn-ro88)
+            ;;
+        usb88)
+            ;;
+        vpn-dvm88)
+            ;;
+        vpn-dvm-big88)
+            ;;
+        work88)
+            build_work_appvm $_appvm
+            ;;
+        zoom88)
+            ;;
+        *)
+            echo "ERROR: appvm_install_additions: unknown vm $_appvm"
+            exit 1
+            ;;
+    esac
+}
+
+
+
+function config_template_firefox () {
+    declare _vm=$1
+    declare _commands
+    declare _f
+
+    notify 2 "--config_firefox _appvm:$_vm"
+
+    for _f in ls $_CONFIGDIR/configFirefox/; do
+        qvm-copy-to-vm $_vm $_f
+    done
+
+    qvm-run \
+        $__qvm_run_options \
+        -u "root" \
+        $_vm \
+        "/home/user/QubesIncoming/dom0/configFirefox"
+}
+
+
+
+function config_user_firefox () {
+    declare _appvm=$1
+    declare _commands
+
+    notify 2 "--config_firefox_addons _appvm:$_appvm"
+
+    _commands=$(cat <<EOF
+        firefox 
+            https://addons.mozilla.org/en-US/firefox/addon/privacy-badger17/
+            https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/
+EOF
+    )
+    _commands=$(echo $_commands | tr '[:space:]' ' ')
+    qube_run_commands $_appvm "user" $_commands
+}
+
+
+
+function config_user () {
+    declare _appvm=$1
+    declare _commands
+    declare _filename
+
+    notify 2 "--config_user _appvm:$_appvm"
+    qvm-start --skip-if-running $_appvm
+    sleep 1
+
+    # nautilus config
+    _commands=$(cat <<EOF
+        dconf write /org/gnome/nautilus/list-view/default-zoom-level \'small\'
+        dconf write /org/gnome/nautilus/list-view/use-tree-view true
+        dconf write /org/gnome/nautilus/preferences/default-folder-viewer \'list-view\'
+        dconf write /org/gtk/settings/file-chooser/expand-folders true
+        dconf write /org/gtk/settings/file-chooser/sort-directories-first true
+EOF
+)
+
+    qube_run_commands $_appvm "user" "$_commands"
+
+    declare _lines=$(cat $_CONFIGDIR/dotfiles/__bashrc)
+    qube_append_file \
+        $_appvm \
+        "user" \
+        "/home/user/.bashrc" \
+        "${_lines//\"/\\\"}"
+
+    for _f in \
+        "_vimrc" \
+        "_screenrc" ;
+    do
+        _filename=$(echo $_F | tr '_' '.')
+        qube_copy_file \
+            $_appvm \
+            "user" \
+            "$_CONFIGDIR/dotfiles/$_f" \
+            "/home/user/$_filename"
+    done
+}
+
+
+
+####################################################################
+# Template / Appvm builds
+#
+
+function build_dev_template () {
+    declare _vm=$1
+
+    config_template_firefox $_vm
+}
+
+
+
 function build_dev_appvm () {
     declare _vm=$1
     notify 2 "--build_dev_appvm $_vm"
@@ -325,7 +439,7 @@ function build_dev_appvm () {
         qube_copy_file \
             $_vm \
             "root" \
-            "utilities/$_f" \
+            "$_UTILITYDIR/$_f" \
             "/usr/local/bin/$_f"
     done
     for _f in \
@@ -335,7 +449,7 @@ function build_dev_appvm () {
         qube_copy_file \
             $_vm \
             "user" \
-            "config/$_f" \
+            "$_CONFIGDIR/$_f" \
             "/home/user/$_f"
     done
 
@@ -345,7 +459,7 @@ function build_dev_appvm () {
 
 
 
-function create_congy_template () {
+function build_congy_template () {
     declare _vm=$1
     declare _templateconfig=${VM_TEMPLATE_NAMES[$_vm]}
     declare _template=$(template_name $_templateconfig)
@@ -354,17 +468,16 @@ function create_congy_template () {
 
     notify 2 "--create_congy_template: $_template"
 
-
     for _f in \
         teams \
         slack ;
     do
-        _debpath=$(ls -t soft/$_f* | head -1)
-        _deb=${_debpath/soft\//}
+        _debpath=$(ls -t $_SOFTWARE/$_f* | head -1)
+        _deb=${_debpath/$_SOFTWARE\//}
         qube_copy_file \
             $_template \
             "root" \
-            "soft/$_deb" \
+            "$_SOFTWARE/$_deb" \
             "/home/user/Downloads/$_deb"
         qvm-run \
             $__qvm_run_options \
@@ -381,7 +494,7 @@ function create_congy_template () {
     qube_copy_file \
         $_template \
         "root" \
-        "config/congy/openfortivpn.service" \
+        "$_CONFIGDIR/congy/openfortivpn.service" \
         "/etc/systemd/system/openfortivpn.service"
     qvm-run \
         $__qvm_run_options \
@@ -409,6 +522,10 @@ function build_congy_appvm () {
     qvm-prefs $_vm virt_mode pv
     qvm-pci attach $_vm $_usb01 --persistent -o no-strict-reset=True
 
+    config_user $_vm
+    config_user_firefox $_vm
+
+
     _commands=$(cat <<EOF
         mkdir -p /rw/config/qubes-bind-dirs.d
         mkdir -p /etc/openfortivpn
@@ -419,7 +536,7 @@ EOF
     qube_copy_file \
         $_vm \
         "root" \
-        "config/congy/vpn.config.secret" \
+        "$_CONFIGDIR/congy/vpn.config.secret" \
         "/etc/openfortivpn/config"
     qvm-run \
         $__qvm_run_options \
@@ -430,13 +547,13 @@ EOF
     qube_copy_file \
         $_vm \
         "root" \
-        "config/congy/50_user.conf" \
+        "$_CONFIGDIR/congy/50_user.conf" \
         "/rw/config/qubes-bind-dirs.d/50_user.conf"
 
     qube_copy_file \
         $_vm \
         "user" \
-        "config/congy/startup" \
+        "$_CONFIGDIR/congy/startup" \
         "/home/user/startup"
 
     _commands=$(cat <<EOF
@@ -449,10 +566,8 @@ EOF
     qube_copy_file \
         $_vm \
         "user" \
-        "config/congy/group_rdp_congy.remmina.secret" \
+        "$_CONFIGDIR/congy/group_rdp_congy.remmina.secret" \
         "/home/user/.local/share/remmina/group_rdp_congy.remmina"
-
-    config_user $_vm
 
     _bashlines=$(cat <<EOF
         alias aross-d1=\"sudo mount -t cifs -o username=aross //aross-d1.congruex.com/c$/Users/aross/Downloads /home/user/mounts/aross-d1 -o uid=1000,gid=1000\"
@@ -466,11 +581,200 @@ EOF
         "$_bashlines"
 
     qube_remove_incomming $_vm
-    #qvm-shutdown $_vm
+    qvm-shutdown $_vm
 
 }
 
 
+
+function build_dvm_template () {
+    declare _vm=$1
+
+    config_template_firefox $_vm
+}
+
+function build_fedoradvm_appvm () {
+    # nothing to do
+}
+
+
+
+function build_media_template () {
+    declare _vm=$1
+
+    config_template_firefox $_vm
+}
+
+function build_media_appvm () {
+    declare _vm=$1
+
+    config_user $_vm
+}
+
+
+function build_min_template () {
+    declare _vm=$1
+
+    # config for thunderbird dates
+    _commands=$(cat <<EOF
+        ln -s /usr/share/i18n/locales/en_DK /usr/share/i18n/locales/en_SE
+        echo 'en_SE.UTF-8 UTF-8' | tee -a /etc/locale.gen
+        locale-gen
+EOF
+)
+    qube_run_commands \
+        $_vm \
+        "root" \
+        "$_commands"
+}
+
+function build_email_appvm () {
+    declare _vm=$1
+
+    for _f in \
+        config/email/thunderbird_timefix ;
+    do
+        qube_copy_file \
+            $_vm \
+            "root" \
+            "$_UTILITYDIR/$_f" \
+            "/usr/local/bin/$_f"
+    done
+
+    build_files_appvm $_vm
+}
+
+function build_fin_appvm () {
+    declare _vm=$1
+
+    for _f in \
+        mntv ;
+    do
+        qube_copy_file \
+            $_vm \
+            "root" \
+            "$_UTILITYDIR/$_f" \
+            "/usr/local/bin/$_f"
+    done
+
+    build_files_appvm $_vm
+}
+
+function build_gpg_appvm () {
+    declare _vm=$1
+
+    qvm-run \
+        $__qvm_run_options \
+        -u root \
+        $_vm \
+        "sudo apt-get install qubes-gpg-split"
+
+    build_files_appvm $_vm
+}
+
+function build_files_appvm () {
+    declare _vm=$1
+
+    config_user $_vm
+
+    for _f in \
+        appendPDF \
+        doublePDF \
+        img2pdf \
+        randomChars.py; 
+    do
+        qube_copy_file \
+            $_vm \
+            "root" \
+            "$_UTILITYDIR/$_f" \
+            "/usr/local/bin/$_f"
+    done
+
+    qube_remove_incomming $_vm
+    qvm-shutdown $_vm
+}
+
+
+
+function build_plus_template () {
+    declare _vm=$1
+
+    config_template_firefox $_vm
+}
+
+function build_epub_appvm () {
+    declare _vm=$1
+
+    config_user $_vm
+
+    for _f in \
+        appendPDF \
+        doublePDF \
+        img2pdf \
+        randomChars.py; 
+    do
+        qube_copy_file \
+            files \
+            "root" \
+            "$_UTILITYDIR/$_f" \
+            "/usr/local/bin/$_f"
+    done
+
+    qube_remove_incomming $_vm
+    qvm-shutdown $_vm
+}
+
+function build_work_appvm () {
+    declare _vm=$1
+
+    config_user $_vm
+
+    for _f in \
+        appendPDF \
+        doublePDF \
+        img2pdf \
+        randomChars.py; 
+    do
+        qube_copy_file \
+            files \
+            "root" \
+            "$_UTILITYDIR/$_f" \
+            "/usr/local/bin/$_f"
+    done
+
+    qube_remove_incomming $_vm
+    qvm-shutdown $_vm
+}
+
+
+
+
+function build_printer_template () {
+    declare _vm=$1
+
+    config_template_firefox $_vm
+}
+
+
+
+function build_usb_template () {
+    declare _vm=$1
+
+    config_template_firefox $_vm
+}
+
+
+
+function build_zoom_template () {
+    declare _vm=$1
+
+    config_template_firefox $_vm
+}
+
+
+
+####################################################################
+# old
 
 function build_system_dvm () {
     declare _vm=${VM_TEMPLATE_NAMES[dvm]}
@@ -478,85 +782,6 @@ function build_system_dvm () {
     config_firefox $_vm
 }
 
-
-
-function config_user () {
-    declare _appvm=$1
-    declare _commands
-
-    notify 2 "--config_user _appvm:$_appvm"
-    qvm-start --skip-if-running $_appvm
-    sleep 1
-
-    # nautilus config
-    _commands=$(cat <<EOF
-        dconf write /org/gnome/nautilus/list-view/default-zoom-level \'small\'
-        dconf write /org/gnome/nautilus/list-view/use-tree-view true
-        dconf write /org/gnome/nautilus/preferences/default-folder-viewer \'list-view\'
-        dconf write /org/gtk/settings/file-chooser/expand-folders true
-        dconf write /org/gtk/settings/file-chooser/sort-directories-first true
-EOF
-)
-
-    qube_run_commands $_appvm "user" "$_commands"
-
-    declare _lines=$(cat dotfiles/__bashrc)
-    qube_append_file \
-        $_appvm \
-        "user" \
-        "/home/user/.bashrc" \
-        "${_lines//\"/\\\"}"
-
-    qube_copy_file \
-        $_appvm \
-        "user" \
-        "dotfiles/_vimrc" \
-        "/home/user/.vimrc"
-
-    qube_copy_file \
-        $_appvm \
-        "user" \
-        "dotfiles/_screenrc" \
-        "/home/user/.screenrc"
-}
-
-
-
-function config_user_firefox () {
-    declare _appvm=$1
-    declare _commands
-
-    notify 2 "--config_firefox_addons _appvm:$_appvm"
-
-    _commands=$(cat <<EOF
-        firefox 
-            https://addons.mozilla.org/en-US/firefox/addon/privacy-badger17/
-            https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/
-EOF
-    )
-    _commands=$(echo $_commands | tr '[:space:]' ' ')
-    qube_run_commands $_appvm "user" $_commands
-}
-
-
-
-function config_template_firefox () {
-    declare _vm=$1
-    declare _commands
-    declare _f
-
-    notify 2 "--config_firefox _appvm:$_vm"
-
-    for _f in ls config/configFirefox/; do
-        qvm-copy-to-vm $_vm $_f
-    done
-
-    qvm-run \
-        $__qvm_run_options \
-        -u "root" \
-        $_vm \
-        "/home/user/QubesIncoming/dom0/configFirefox"
-}
 
 
 function create_vpn () {
@@ -616,46 +841,6 @@ function create_vpn () {
 }
 
 
-function create_media_appvms() {
-    declare _template=$1
-    declare _appvm
-
-    # create media dvm
-    _appvm=media-dvm
-    notify 2 "--create_media__appvms _template:$_template, APPVM:$APPVM"
-
-    qvm-create --class AppVM \
-        --template $_template \
-        --label red \
-        --prop=maxmem=8192 \
-        --prop=memory=1024 \
-        $_appvm
-    qvm-prefs $_appvm template_for_dispvms True
-    qvm-features $_appvm appmenus-dispvm 1
-    qvm-volume extend $_appvm:private 8192mb
-
-    qvm-start $_appvm
-    config_user $_appvm
-    qvm-shutdown $_appvm 
-
-    # create media
-    declare _appvm=media
-    check_vm $_appvm
-
-    qvm-create --class AppVM \
-        --template $_template \
-        --label green \
-        --prop=maxmem=8192 \
-        --prop=memory=1024 \
-        $_appvm
-    qvm-volume extend $_appvm:private 8192mb
-
-    qvm-start $_appvm
-    config_user $_appvm
-    qvm-shutdown $_appvm 
-}
-
-
 function install_printer_soft () {
     local TEMPLATE=$1
     local brotherinst=linux-brprinter-installer-2.2.1-1
@@ -708,134 +893,6 @@ function create_printer_appvms() {
 
     qvm-run -p $appvm  "rm -rf /home/user/QubesIncoming"
     qvm-shutdown $appvm
-}
-
-
-function create_plus_appvms() {
-    local TEMPLATE=$1
-
-    # create plus-dvm
-    local appvm=plus-dvm
-    check_vm $appvm
-
-    qvm-create --class AppVM \
-        --template $TEMPLATE \
-        --label red \
-        --prop=maxmem=4096 \
-        --prop=memory=1024 \
-        $appvm
-    qvm-prefs $appvm template_for_dispvms True
-    qvm-features $appvm appmenus-dispvm 1
-    qvm-volume extend $appvm:private 20480mb
-
-    # create work
-    local appvm=work
-    check_vm $appvm
-
-    qvm-create --class AppVM \
-        --template $TEMPLATE \
-        --label green \
-        --prop=maxmem=8192 \
-        --prop=memory=1024 \
-        --prop=netvm="" \
-        $appvm
-    qvm-volume extend $appvm:private 20480mb
-    
-    # create epub
-    local appvm=epub
-    check_vm $appvm
-
-    qvm-create --class AppVM \
-        --template $TEMPLATE \
-        --label green \
-        --prop=maxmem=8192 \
-        --prop=memory=1024 \
-        --prop=netvm="" \
-        $appvm
-    qvm-volume extend $appvm:private 50000mb
-}
-
-
-function create_gpg () {
-    local _systemplate=fedora-30
-    local APPNAME=gpg
-    qvm-create --class AppVM \
-        --template $_systemplate \
-        --label orange \
-        --prop=maxmem=4000 \
-        --prop=memory=400 \
-        --prop=netvm="" \
-        $APPNAME
-    qvm-start $APPNAME
-    qvm-run -p -u root $APPNAME "sudo apt-get install qubes-gpg-split"
-
-
-}
-
-
-
-function create_min () {
-    declare _vm
-
-    # min
-    TEMPLATE=${VM_TEMPLATE_NAMES[min]}
-    SOFTWARE=${VM_SOFT[min]}
-    create_template $TEMPLATE $_MASTERTEMPLATE $SOFTWARE
-
-    for _vm in \
-        files \
-        fin \
-        gpg;
-    do
-        create_appvm $_vm ${VM_CONFIG[$_vm]}
-        config_user $_vm
-    done
-
-    # files setup
-    for _f in \
-        appendPDF \
-        doublePDF \
-        img2pdf \
-        randomChars.py; 
-    do
-        qube_copy_file \
-            files \
-            "root" \
-            "utilities/$_f" \
-            "/usr/local/bin/$_f"
-    done
-
-    # fin setup
-    for _f in \
-        appendPDF \
-        img2pdf \
-        mntv \
-        randomChars.py \
-        updateVault \
-        updateVault.secrets; 
-    do
-        qube_copy_file \
-            fin \
-            "root" \
-            "utilities/$_f" \
-            "/usr/local/bin/$_f"
-    done
-
-    # gpg setup
-    qvm-run \
-        $__qvm_run_options \
-        -u root \
-        gpg \
-        "sudo apt-get install qubes-gpg-split"
-
-    for _vm in \
-        files \
-        fin \
-        gpg; \
-    do
-        qube_remove_incomming $_vm
-        qvm-shutdown $_vm
-    done
 }
 
 
@@ -974,23 +1031,21 @@ VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
 ORIG_VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
     [congy88]="AppVM;${VM_TEMPLATE_NAMES[congy]};orange;4000;400;x;2;sys-firewall;0"
     [dev88]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;x;0"
+    [study88]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;sys-firewall;0"
     [email88]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;2000;600;15000;2;sys-firewall;0"
-    [epub88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;2000;500;50000;1;sys-firewall;0"
-    [fedora-dvm88]="AppVM;${VM_TEMPLATE_NAMES[fedora]};red;2000;600;x;2;sys-firewall;1"
     [files88]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;800;400;150000;1;x;0"
     [fin88]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;1024;400;x;1;x;0"
     [gpg88]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;800;400;x;1;x;0"
-    [study88]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;sys-firewall;0"
-    [media-dvm88]="AppVM;${VM_TEMPLATE_NAMES[media]};red;8192;820;dvm;8192;2;sys-firewall;1"
-    [media88]="AppVM;${VM_TEMPLATE_NAMES[media]};green;8192;1024;30720;2;sys-firewall;0"
-    [plus-dvm88]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;4096;400;5120;2;sys-firewall;1"
-    [printer-dvm88]="AppVM;${VM_TEMPLATE_NAMES[printer]};red;974;350;x;1;sys-firewall;1"
+    [epub88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;2000;500;50000;1;sys-firewall;0"
+    [work88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;20000;1;sys-firewall;0"
+    [vpn-dvm88]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;4000;400;9216;2;sys-vpn-ro;1"
+    [vpn-dvm-big88]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;4000;400;28672;2;sys-vpn-ro;1"
+    [fedora-dvm88]="AppVM;${VM_TEMPLATE_NAMES[dvm]};red;2000;600;x;2;sys-firewall;1"
     [sys-vpn-ca88]="AppVM;${VM_TEMPLATE_NAMES[fedora]};orange;500;400;x;1;sys-net;0"
     [sys-vpn-ro88]="AppVM;${VM_TEMPLATE_NAMES[fedora]};orange;500;400;x;1;sys-net;0"
+    [media88]="AppVM;${VM_TEMPLATE_NAMES[media]};green;8192;1024;30720;2;sys-firewall;0"
+    [printer-dvm88]="AppVM;${VM_TEMPLATE_NAMES[printer]};red;974;350;x;1;sys-firewall;1"
     [usb88]="AppVM;${VM_TEMPLATE_NAMES[usb]};orange;4000;2000;22528;3;sys-firewall;0"
-    [vpn-dvm-big88]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;4000;400;28672;2;sys-vpn-ro;1"
-    [vpn-dvm88]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;4000;400;9216;2;sys-vpn-ro;1"
-    [work88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;20000;1;sys-firewall;0"
     [zoom88]="AppVM;${VM_TEMPLATE_NAMES[zoom]};orange;4000;400;x;3;sys-firewall;1"
     )
 
