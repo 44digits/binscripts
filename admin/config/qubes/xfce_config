@@ -1,0 +1,34 @@
+#!/bin/bash
+
+
+#xfconf-query -c xfce4-keyboard-shortcuts -p "/commands/custom/<Primary><Shift>F12"
+#/home/ross/bin/qube_launcher
+#[ross@dom0 Desktop]$ xfconf-query -c xfce4-keyboard-shortcuts -p "/commands/custom/<Primary><Shift>F11"
+#/home/ross/bin/qube_blockit
+
+
+
+for p in \
+    /backdrop/screen0/monitor0/workspace0/image-style \
+    /backdrop/screen0/monitor0/workspace0/last-image \
+    /backdrop/screen0/monitor0/workspace1/image-style \
+    /backdrop/screen0/monitor0/workspace1/last-image \
+    /backdrop/screen0/monitor0/workspace2/image-style \
+    /backdrop/screen0/monitor0/workspace2/last-image \
+    /backdrop/screen0/monitor0/workspace3/image-style \
+    /backdrop/screen0/monitor0/workspace3/last-image \
+    /backdrop/screen0/monitor0/workspace4/image-style \
+    /backdrop/screen0/monitor0/workspace4/last-image \
+    /backdrop/screen0/monitor1/workspace0/image-style \
+    /backdrop/screen0/monitor1/workspace0/last-image \
+    /backdrop/screen0/monitor1/workspace1/image-style \
+    /backdrop/screen0/monitor1/workspace1/last-image \
+    /backdrop/screen0/monitor1/workspace2/image-style \
+    /backdrop/screen0/monitor1/workspace2/last-image \
+    /backdrop/screen0/monitor1/workspace3/image-style \
+    /backdrop/screen0/monitor1/workspace3/last-image ;
+do
+    echo "xfconf-query -c xfce4-desktop -p $p -s "
+    xfconf-query -c xfce4-desktop -p $p
+done
+

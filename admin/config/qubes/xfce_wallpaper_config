@@ -1,0 +1,19 @@
+xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/workspace0/image-style -s 6
+xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/workspace0/last-image -s /home/ross/bin/img/sailboat_beach.jpg
+xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor1/workspace0/image-style -s 1
+xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor1/workspace0/last-image -s /home/ross/bin/img/wp3846234-world-flags-wallpapers.jpg
+
+xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/workspace1/image-style -s 5
+xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/workspace1/last-image -s /home/ross/bin/img/wallpapertip_blue-victorian-wallpaper_482450.jpg
+xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor1/workspace1/image-style -s 5
+xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor1/workspace1/last-image -s /home/ross/bin/img/wallpapertip_blue-victorian-wallpaper_482450.jpg
+
+xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/workspace2/image-style -s 3
+xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/workspace2/last-image -s /home/ross/bin/img/f41f87ecc12a820a58dbc9e49b9d4db9.jpg
+xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor1/workspace2/image-style -s 3
+xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor1/workspace2/last-image -s /home/ross/bin/img/f41f87ecc12a820a58dbc9e49b9d4db9.jpg
+
+xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/workspace3/image-style -s 2
+xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/workspace3/last-image -s /home/ross/bin/img/double-bubble-dark.png
+xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor1/workspace3/image-style -s 2
+xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor1/workspace3/last-image -s /home/ross/bin/img/webb-dark.png
