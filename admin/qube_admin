@@ -11,9 +11,9 @@
 
 declare _MASTER_DEBIAN_TEMPLATE=debian-10
 declare _MASTER_FEDORA_TEMPLATE=fedora-32
-declare _CONFIGDIR="$(dirname $0)/config/"
-declare _UTILITYDIR="$(dirname $0)/utilities/"
-declare _SOFTWARE="$(dirname $0)/soft/"
+declare _CONFIGDIR="$(dirname $0)/config"
+declare _UTILITYDIR="$(dirname $0)/utilities"
+declare _SOFTWARE="$(dirname $0)/soft"
 
 declare __notifylevel=2
 
@@ -133,8 +133,10 @@ function create_template () {
 
 function template_install_additions () {
     declare _vm=$1
+    declare _templateconfig=${VM_TEMPLATE_NAMES[$_vm]}
+    declare _templatename=$(template_name $_templateconfig)
 
-    notify 2 "--template_install_additions: $_vm"
+    notify 2 "--template_install_additions: $_templatename"
     case $_vm in
         debian)
             # base template - no additions
@@ -143,34 +145,34 @@ function template_install_additions () {
             # base template - no additions
             ;;
         congy)
-            build_congy_template $_vm
+            build_congy_template $_templatename
             ;;
         dev)
-            build_dev_template $_vm
+            build_dev_template $_templatename
             ;;
         dvm)
-            build_dvm_template $_vm
+            build_dvm_template $_templatename
             ;;
         media)
-            build_media_template $_vm
+            build_media_template $_templatename
             ;;
         min)
-            build_min_template $_vm
+            build_min_template $_templatename
             ;;
         plus)
-            build_plus_template $_vm
+            build_plus_template $_templatename
             ;;
         printer)
-            build_printer_template $_vm
+            build_printer_template $_templatename
             ;;
         usb)
-            build_usb_template $_vm
+            build_usb_template $_templatename
             ;;
         zoom)
-            build_zoom_template $_vm
+            build_zoom_template $_templatename
             ;;
         *)
-            echo "ERROR: template_install_additions: unknown vm $_vm"
+            echo "ERROR: template_install_additions: unknown vm $_templatename"
             exit 1
             ;;
     esac
@@ -280,6 +282,9 @@ function appvm_install_additions () {
         dev88)
             build_dev_appvm $_appvm
             ;;
+        study88)
+            build_dev_appvm $_appvm
+            ;;
         email88)
             build_email_appvm $_appvm
             ;;
@@ -290,15 +295,13 @@ function appvm_install_additions () {
             build_fedoradvm_appvm $_appvm
             ;;
         files88)
-            build_files_appvm $_appvm
+            build_min_appvm $_appvm
             ;;
         fin88)
             build_fin_appvm $_appvm
             ;;
         gpg88)
             build_gpg_appvm $_appvm
-            ;;
-        study88)
             ;;
         media88)
             build_media_appvm $_appvm
@@ -329,20 +332,36 @@ function appvm_install_additions () {
 
 function config_template_firefox () {
     declare _vm=$1
-    declare _commands
-    declare _f
+    declare _firefoxdir
 
     notify 2 "--config_firefox _appvm:$_vm"
 
-    for _f in ls $_CONFIGDIR/configFirefox/; do
-        qvm-copy-to-vm $_vm $_f
-    done
+    _ostype=$( qube_get_distribution $_vm )
+    case $_ostype in
+        "debian")
+            _firefoxdir="/etc/firefox-esr"
+            ;;
 
-    qvm-run \
-        $__qvm_run_options \
-        -u "root" \
+        "fedora")
+            _firefoxdir="/etc/firefox/pref"
+            ;;
+        *)
+            notify 0 "ERROR: qube_update: unknown OStype:$_ostype"
+            exit 1
+    esac
+
+    qube_copy_file \
         $_vm \
-        "/home/user/QubesIncoming/dom0/configFirefox"
+        "root" \
+        "$_CONFIGDIR/firefox/syspref.js" \
+        "$_firefoxdir/syspref.js"
+
+    qube_copy_file \
+        $_vm \
+        "root" \
+        "$_CONFIGDIR/firefox/bookmarks.html" \
+        "/etc/firefox/bookmarks.html"
+
 }
 
 
@@ -353,14 +372,6 @@ function config_user_firefox () {
 
     notify 2 "--config_firefox_addons _appvm:$_appvm"
 
-    _commands=$(cat <<EOF
-        firefox 
-            https://addons.mozilla.org/en-US/firefox/addon/privacy-badger17/
-            https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/
-EOF
-    )
-    _commands=$(echo $_commands | tr '[:space:]' ' ')
-    qube_run_commands $_appvm "user" $_commands
 }
 
 
@@ -397,7 +408,7 @@ EOF
         "_vimrc" \
         "_screenrc" ;
     do
-        _filename=$(echo $_F | tr '_' '.')
+        _filename=$(echo $_f | tr '_' '.')
         qube_copy_file \
             $_appvm \
             "user" \
@@ -594,6 +605,7 @@ function build_dvm_template () {
 }
 
 function build_fedoradvm_appvm () {
+    declare _vm=$1
     # nothing to do
 }
 
@@ -641,7 +653,7 @@ function build_email_appvm () {
             "/usr/local/bin/$_f"
     done
 
-    build_files_appvm $_vm
+    build_min_appvm $_vm
 }
 
 function build_fin_appvm () {
@@ -657,7 +669,7 @@ function build_fin_appvm () {
             "/usr/local/bin/$_f"
     done
 
-    build_files_appvm $_vm
+    build_min_appvm $_vm
 }
 
 function build_gpg_appvm () {
@@ -669,10 +681,10 @@ function build_gpg_appvm () {
         $_vm \
         "sudo apt-get install qubes-gpg-split"
 
-    build_files_appvm $_vm
+    build_min_appvm $_vm
 }
 
-function build_files_appvm () {
+function build_min_appvm () {
     declare _vm=$1
 
     config_user $_vm
@@ -1007,6 +1019,9 @@ VM_TEMPLATE_NAMES=(
     [fedora]="$_MASTER_FEDORA_TEMPLATE:"
     [congy]="$_MASTER_DEBIAN_TEMPLATE:congy77"
     [dev]="$_MASTER_DEBIAN_TEMPLATE:dev77"
+    [media]="$_MASTER_DEBIAN_TEMPLATE:media77"
+    [min]="$_MASTER_DEBIAN_TEMPLATE:min77"
+    [plus]="$_MASTER_DEBIAN_TEMPLATE:plus77"
 )
 
 ORIG_VM_TEMPLATE_NAMES=( 
@@ -1026,6 +1041,14 @@ ORIG_VM_TEMPLATE_NAMES=(
 VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
     [congy88]="AppVM;${VM_TEMPLATE_NAMES[congy]};orange;4000;400;x;2;sys-firewall;0"
     [dev88]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;x;0"
+    [study88]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;sys-firewall;0"
+    [email88]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;2000;600;15000;2;sys-firewall;0"
+    [files88]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;800;400;150000;1;x;0"
+    [fin88]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;1024;400;x;1;x;0"
+    [gpg88]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;800;400;x;1;x;0"
+    [epub88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;2000;500;50000;1;sys-firewall;0"
+    [work88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;20000;1;sys-firewall;0"
+    [media88]="AppVM;${VM_TEMPLATE_NAMES[media]};green;8192;1024;30720;2;sys-firewall;0"
     )
 
 ORIG_VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
