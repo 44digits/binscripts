@@ -168,6 +168,9 @@ function template_install_additions () {
         usb)
             build_usb_template $_templatename
             ;;
+        vpn)
+            build_vpn_template $_templatename
+            ;;
         zoom)
             build_zoom_template $_templatename
             ;;
@@ -309,13 +312,19 @@ function appvm_install_additions () {
         printer-dvm88)
             build_printer_dvm $_appvm
             ;;
+        sys-vpn-ca88)
+            build_vpnca $_appvm
+            ;;
         sys-vpn-ro88)
+            build_vpnro $_appvm
             ;;
         usb88)
             ;;
         vpn-dvm88)
+            build_vpn_dvm $_appvm
             ;;
         vpn-dvm-big88)
+            build_vpn_dvm $_appvm
             ;;
         work88)
             build_work_appvm $_appvm
@@ -473,12 +482,10 @@ function build_dev_appvm () {
 
 function build_congy_template () {
     declare _vm=$1
-    declare _templateconfig=${VM_TEMPLATE_NAMES[$_vm]}
-    declare _template=$(template_name $_templateconfig)
     declare _debpath
     declare _deb
 
-    notify 2 "--create_congy_template: $_template"
+    notify 2 "--create_congy_template: $_vm"
 
     for _f in \
         teams \
@@ -487,40 +494,40 @@ function build_congy_template () {
         _debpath=$(ls -t $_SOFTWARE/$_f* | head -1)
         _deb=${_debpath/$_SOFTWARE\//}
         qube_copy_file \
-            $_template \
+            $_vm \
             "root" \
             "$_SOFTWARE/$_deb" \
             "/home/user/Downloads/$_deb"
         qvm-run \
             $__qvm_run_options \
             -u root \
-            $_template \
+            $_vm \
             "dpkg -i /home/user/Downloads/$_deb" || true
     done
     qvm-run \
         $__qvm_run_options \
         -u root \
-        $_template \
+        $_vm \
         "sudo apt-get install -yf"
 
     qube_copy_file \
-        $_template \
+        $_vm \
         "root" \
         "$_CONFIGDIR/congy/openfortivpn.service" \
         "/etc/systemd/system/openfortivpn.service"
     qvm-run \
         $__qvm_run_options \
         -u root \
-        $_template \
+        $_vm \
         "chmod +x /etc/systemd/system/openfortivpn.service"
     qvm-run \
         $__qvm_run_options \
         -u root \
-        $_template \
+        $_vm \
         "systemctl enable openfortivpn"
 
-    qube_remove_incomming $_template
-    qvm-shutdown $_template
+    qube_remove_incomming $_vm
+    qvm-shutdown $_vm
 }
 
 
@@ -674,6 +681,7 @@ function build_fin_appvm () {
 }
 
 function build_gpg_appvm () {
+    # https://www.qubes-os.org/doc/split-gpg/
     declare _vm=$1
 
     qvm-run \
@@ -763,13 +771,11 @@ function build_work_appvm () {
 
 function build_printer_template () {
     declare _vm=$1
-    declare _templateconfig=${VM_TEMPLATE_NAMES[$_vm]}
-    declare _template=$(template_name $_templateconfig)
     declare _tgzpath
     declare _print_tgz
     declare _commands
 
-    notify 2 "--build_printer_template: _template:$_template"
+    notify 2 "--build_printer_template: _vm:$_vm"
 
     config_template_firefox $_vm
 
@@ -786,8 +792,8 @@ EOF
 )
     qube_run_commands $_vm "root" "$_commands"
 
-    qube_remove_incomming $_template
-    qvm-shutdown $_template 
+    qube_remove_incomming $_vm
+    qvm-shutdown $_vm 
 }
 
 function build_printer_dvm () {
@@ -824,6 +830,29 @@ function build_zoom_template () {
     declare _vm=$1
 
     config_template_firefox $_vm
+}
+
+
+
+function build_vpn_template () {
+    # https://github.com/Qubes-Community/Contents/blob/master/docs/configuration/vpn.md
+    declare _vm=$1
+
+}
+
+function build_vpnca () {
+    declare _vm=$1
+
+}
+
+function build_vpnro () {
+    declare _vm=$1
+
+}
+
+function build_vpn_dvm () {
+    declare _vm=$1
+
 }
 
 
