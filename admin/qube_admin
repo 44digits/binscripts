@@ -794,6 +794,20 @@ function build_printer_dvm () {
     declare _vm=$1
 
     config_user $_vm
+
+    for _f in \
+        appendPDF \
+        doublePDF \
+        img2pdf \
+        printBro \
+        scanBro ;
+    do
+        qube_copy_file \
+            $_vm \
+            "root" \
+            "$_UTILITYDIR/$_f" \
+            "/usr/local/bin/$_f"
+    done
 }
 
 
