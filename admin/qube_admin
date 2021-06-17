@@ -835,17 +835,19 @@ function build_zoom_template () {
 
 
 function build_vpn_template () {
+    declare _vm=$1
+
+    config_template_firefox $_vm
+}
+
+function build_vpnca () {
     # https://github.com/Qubes-Community/Contents/blob/master/docs/configuration/vpn.md
     declare _vm=$1
 
 }
 
-function build_vpnca () {
-    declare _vm=$1
-
-}
-
 function build_vpnro () {
+    # https://github.com/Qubes-Community/Contents/blob/master/docs/configuration/vpn.md
     declare _vm=$1
 
 }
@@ -1087,6 +1089,7 @@ VM_TEMPLATE_NAMES=(
     [min]="$_MASTER_DEBIAN_TEMPLATE:min77"
     [plus]="$_MASTER_DEBIAN_TEMPLATE:plus77"
     [printer]="$_MASTER_DEBIAN_TEMPLATE:printer77"
+    [vpn]="$_MASTER_FEDORA_TEMPLATE:vpn77"
 )
 
 ORIG_VM_TEMPLATE_NAMES=( 
@@ -1100,6 +1103,7 @@ ORIG_VM_TEMPLATE_NAMES=(
     [plus]="$_MASTER_DEBIAN_TEMPLATE:plus77"
     [printer]="$_MASTER_DEBIAN_TEMPLATE:printer77"
     [usb]="$_MASTER_FEDORA_TEMPLATE:usb77"
+    [vpn]="$_MASTER_FEDORA_TEMPLATE:vpn77"
     [zoom]="$_MASTER_DEBIAN_TEMPLATE:zoom77"
 )
 
@@ -1127,11 +1131,11 @@ ORIG_VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network
     [gpg88]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;800;400;x;1;x;0"
     [epub88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;2000;500;50000;1;sys-firewall;0"
     [work88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;20000;1;sys-firewall;0"
-    [vpn-dvm88]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;4000;400;9216;2;sys-vpn-ro;1"
-    [vpn-dvm-big88]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;4000;400;28672;2;sys-vpn-ro;1"
+    [vpn-dvm88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;9216;2;sys-vpn-ro;1"
+    [vpn-dvm-big88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;28672;2;sys-vpn-ro;1"
     [fedora-dvm88]="AppVM;${VM_TEMPLATE_NAMES[dvm]};red;2000;600;x;2;sys-firewall;1"
-    [sys-vpn-ca88]="AppVM;${VM_TEMPLATE_NAMES[fedora]};orange;500;400;x;1;sys-net;0"
-    [sys-vpn-ro88]="AppVM;${VM_TEMPLATE_NAMES[fedora]};orange;500;400;x;1;sys-net;0"
+    [sys-vpn-ca88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};orange;500;400;x;1;sys-net;0"
+    [sys-vpn-ro88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};orange;500;400;x;1;sys-net;0"
     [media88]="AppVM;${VM_TEMPLATE_NAMES[media]};green;8192;1024;30720;2;sys-firewall;0"
     [printer-dvm88]="AppVM;${VM_TEMPLATE_NAMES[printer]};red;974;350;x;1;sys-firewall;1"
     [usb88]="AppVM;${VM_TEMPLATE_NAMES[usb]};orange;4000;2000;22528;3;sys-firewall;0"
@@ -1144,7 +1148,6 @@ VM_SOFT=(
         calibre
         chromium
         curl
-        deluge
         eog
         gimp
         git
@@ -1158,7 +1161,6 @@ VM_SOFT=(
         nautilus
         pdftk
         python3-pip
-        remmina
         remmina
         rsync
         s3cmd
@@ -1225,6 +1227,13 @@ EOF
         pdfshuffler
         pdftk
         xsane
+EOF
+    )
+    [vpn]=$(tr -s [:space:] '&' <<EOF
+        chromium
+        deluge
+        eog
+        nautilus
 EOF
     )
     [congy]=$(tr -s [:space:] '&' <<EOF
