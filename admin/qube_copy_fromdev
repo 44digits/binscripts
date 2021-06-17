@@ -8,7 +8,6 @@ declare _destdir=$(dirname "$0")
 declare _filelist
 
 : <<'END'
-    qube_backup
     qube_sshraid
     qube_blockit
     qube_copy_admin
@@ -33,15 +32,30 @@ declare _filelist
     config/configFirefox/configFirefox
     config/configFirefox/firefox.cfg
     config/configFirefox/policies.json
-    config/congy/congy.config.secret
-    config/congy/group_rdp_congy.remmina.secret
+
+    config/congy/vpn.config.secret
     config/congy/openfortivpn.service
+    config/congy/startup
+    config/congy/50_user.conf
+    config/congy/group_rdp_congy.remmina.secret
+    
+    soft/brother_instructions_mfcl2710dwp.pdf
+    soft/linux-brprinter-installer-2.2.1-1.gz
+    soft/slack-desktop-4.4.3-amd64.deb
+    soft/teams-1.3.00.5153-1.x86_64.rpm
+    soft/teams_1.4.00.7556_amd64.deb
+    soft/slack-desktop-4.16.0-amd64.deb
+    soft/teams_1.3.00.5153_amd64.deb
 END
 
 
 read -r -d '' _filelist <<EOF
+    qube_copy_fromdev
     qube_admin
     qubes_functions
+    qube_backup
+    qube_restore
+    config/congy/vpn.config.secret
 EOF
 
 for _f in $_filelist; do
