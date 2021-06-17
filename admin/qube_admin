@@ -292,7 +292,7 @@ function appvm_install_additions () {
             build_epub_appvm $_appvm
             ;;
         fedora-dvm88)
-            build_fedoradvm_appvm $_appvm
+            build_fedoradvm_dvm $_appvm
             ;;
         files88)
             build_min_appvm $_appvm
@@ -307,6 +307,7 @@ function appvm_install_additions () {
             build_media_appvm $_appvm
             ;;
         printer-dvm88)
+            build_printer_dvm $_appvm
             ;;
         sys-vpn-ro88)
             ;;
@@ -604,7 +605,7 @@ function build_dvm_template () {
     config_template_firefox $_vm
 }
 
-function build_fedoradvm_appvm () {
+function build_fedoradvm_dvm  () {
     declare _vm=$1
     # nothing to do
 }
@@ -760,11 +761,39 @@ function build_work_appvm () {
 
 
 
-
 function build_printer_template () {
     declare _vm=$1
+    declare _templateconfig=${VM_TEMPLATE_NAMES[$_vm]}
+    declare _template=$(template_name $_templateconfig)
+    declare _tgzpath
+    declare _print_tgz
+    declare _commands
+
+    notify 2 "--build_printer_template: _template:$_template"
 
     config_template_firefox $_vm
+
+    _tgzpath=$(ls -t $_SOFTWARE/*brprint* | head -1)
+    _print_tgz=${_debpath/$_SOFTWARE\//}
+    qvm-copy-to-vm $_vm "$_SOFTWARE/$_print_tgz"
+
+    notify 1 "--Install printer soft: model number MFCL2710DW"
+
+    _commands=$(cat <<EOF
+        gunzip /home/user/QubesIncoming/dom0/$_print_tgz
+        bash /home/user/QubesIncoming/dom0/$_print_tgz
+EOF
+)
+    qube_run_commands $_vm "root" "$_commands"
+
+    qube_remove_incomming $_template
+    qvm-shutdown $_template 
+}
+
+function build_printer_dvm () {
+    declare _vm=$1
+
+    config_user $_vm
 }
 
 
@@ -787,14 +816,6 @@ function build_zoom_template () {
 
 ####################################################################
 # old
-
-function build_system_dvm () {
-    declare _vm=${VM_TEMPLATE_NAMES[dvm]}
-    
-    config_firefox $_vm
-}
-
-
 
 function create_vpn () {
     declare _vpnvm=sys-vpn-ro
@@ -1022,6 +1043,7 @@ VM_TEMPLATE_NAMES=(
     [media]="$_MASTER_DEBIAN_TEMPLATE:media77"
     [min]="$_MASTER_DEBIAN_TEMPLATE:min77"
     [plus]="$_MASTER_DEBIAN_TEMPLATE:plus77"
+    [printer]="$_MASTER_DEBIAN_TEMPLATE:printer77"
 )
 
 ORIG_VM_TEMPLATE_NAMES=( 
@@ -1049,6 +1071,7 @@ VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
     [epub88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;2000;500;50000;1;sys-firewall;0"
     [work88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;20000;1;sys-firewall;0"
     [media88]="AppVM;${VM_TEMPLATE_NAMES[media]};green;8192;1024;30720;2;sys-firewall;0"
+    [printer-dvm88]="AppVM;${VM_TEMPLATE_NAMES[printer]};red;974;350;x;1;sys-firewall;1"
     )
 
 ORIG_VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
