@@ -209,8 +209,6 @@ function create_all_appvms () {
             _configs=(${_appconfig//;/ })
             _templatename="${_configs[1]}"
 
-            echo " -- {VM_TEMPLATE_NAMES[\$_templatevm]}: ${VM_TEMPLATE_NAMES[$_templatevm]}"
-            echo " -- Templatename: $_templatename"
             if [[ "${VM_TEMPLATE_NAMES[$_templatevm]}" == "$_templatename" ]]; then
                 if create_appvm $_appvm ${VM_CONFIG[$_appvm]}; then
                     appvm_install_additions $_appvm
@@ -343,6 +341,7 @@ function appvm_install_additions () {
 function config_template_firefox () {
     declare _vm=$1
     declare _firefoxdir
+    declare _f
 
     notify 2 "--config_firefox _appvm:$_vm"
 
@@ -360,17 +359,16 @@ function config_template_firefox () {
             exit 1
     esac
 
-    qube_copy_file \
-        $_vm \
-        "root" \
-        "$_CONFIGDIR/firefox/syspref.js" \
-        "$_firefoxdir/syspref.js"
-
-    qube_copy_file \
-        $_vm \
-        "root" \
-        "$_CONFIGDIR/firefox/bookmarks.html" \
-        "/etc/firefox/bookmarks.html"
+    for _f in \
+        syspref.js \
+        bookmarks.html ;
+    do
+        qube_copy_file \
+            $_vm \
+            "root" \
+            "$_CONFIGDIR/firefox/$_f" \
+            "$_firefoxdir/$_f"
+    done
 
 }
 
@@ -665,12 +663,12 @@ function build_email_appvm () {
     declare _vm=$1
 
     for _f in \
-        config/email/thunderbird_timefix ;
+        thunderbird_timefix ;
     do
         qube_copy_file \
             $_vm \
             "root" \
-            "$_UTILITYDIR/$_f" \
+            "$_CONFIGDIR/email/$_f" \
             "/usr/local/bin/$_f"
     done
 
@@ -1373,6 +1371,7 @@ EOF
     [printer]=$(tr -s [:space:] '&' <<EOF
         eog
         evince
+        gimp
         nautilus
         pdfshuffler
         pdftk
