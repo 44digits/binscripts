@@ -497,12 +497,12 @@ function build_congy_template () {
             $_vm \
             "root" \
             "$_SOFTWARE/$_deb" \
-            "/home/user/Downloads/$_deb"
+            "/tmp/$_deb"
         qvm-run \
             $__qvm_run_options \
             -u root \
             $_vm \
-            "dpkg -i /home/user/Downloads/$_deb" || true
+            "dpkg -i /tmp/$_deb" || true
     done
     qvm-run \
         $__qvm_run_options \
@@ -534,9 +534,9 @@ function build_congy_template () {
 
 function build_congy_appvm () {
     declare _vm=$1
-    declare _commands
     declare _bashlines
-    declare _usb01=dom0:00_1d.0
+    declare _commands
+    declare _usb01="dom0:00_1d.0"
 
     qvm-prefs $_vm virt_mode pv
     qvm-pci attach $_vm $_usb01 --persistent -o no-strict-reset=True
@@ -569,11 +569,22 @@ EOF
         "$_CONFIGDIR/congy/50_user.conf" \
         "/rw/config/qubes-bind-dirs.d/50_user.conf"
 
-    qube_copy_file \
-        $_vm \
-        "user" \
-        "$_CONFIGDIR/congy/startup" \
-        "/home/user/startup"
+    _bashlines=$(cat <<EOF
+#!/bin/bash
+
+/usr/bin/slack -s &
+/usr/bin/remmina &
+/usr/bin/firefox &
+gvim /home/user/firstDay.notes &
+
+EOF
+)
+	qube_write_file \
+		$_vm \
+		"user" \
+        "/home/user/startup" \
+		/rw/config/vpn/qubes-vpn-handler.sh \
+        "${_bashlines//\"/\\\"}"
 
     _commands=$(cat <<EOF
         mkdir -p /home/user/mounts/aross-d1
@@ -589,8 +600,10 @@ EOF
         "/home/user/.local/share/remmina/group_rdp_congy.remmina"
 
     _bashlines=$(cat <<EOF
+
         alias aross-d1=\"sudo mount -t cifs -o username=aross //aross-d1.congruex.com/c$/Users/aross/Downloads /home/user/mounts/aross-d1 -o uid=1000,gid=1000\"
         alias um-aross-d1=\"sudo umount /home/user/mounts/aross-d1\"
+
 EOF
 )
     qube_append_file \
@@ -836,25 +849,187 @@ function build_zoom_template () {
 
 function build_vpn_template () {
     declare _vm=$1
+    notify 2 "--build_vpn_template: _vm:$_vm"
 
     config_template_firefox $_vm
 }
 
 function build_vpnca () {
-    # https://github.com/Qubes-Community/Contents/blob/master/docs/configuration/vpn.md
     declare _vm=$1
 
+    notify 2 "--build_vpnca: _vm:$_vm"
+
+    qube_copy_file $_vm \
+        "user" \
+        "$_CONFIGDIR/ca.vpn.ovpn.secret" \
+        "/tmp/vpn.ovpn"
+
+	build_vpn_server $_vm
+    qvm-shutdown $_vm
 }
 
 function build_vpnro () {
+    declare _vm=$1
+
+    notify 2 "--build_vpnro: _vm:$_vm"
+
+    qube_copy_file $_vm \
+        "user" \
+        "$_CONFIGDIR/ro.vpn.ovpn.secret" \
+        "/tmp/vpn.ovpn"
+
+	build_vpn_server $_vm
+    qvm-shutdown $_vm
+}
+
+function build_vpn_server () {
     # https://github.com/Qubes-Community/Contents/blob/master/docs/configuration/vpn.md
     declare _vm=$1
+	declare _commands
+	declare _text
+
+    qvm-prefs $_vm provides_network True
+
+    qvm-run \
+        $__qvm_run_options \
+        -u root \
+        $_vm \
+        "mkdir -p /rw/config/vpn"
+		
+    _text=$(cat <<EOF
+#!/bin/bash
+set -e
+export PATH="\$PATH:/usr/sbin:/sbin"
+export vpn_dns="8.8.8.8 8.8.4.4"
+
+case "\$1" in
+
+up)
+# To override DHCP DNS, assign DNS addresses to 'vpn_dns' env variable before calling this script;
+# Format is 'X.X.X.X  Y.Y.Y.Y [...]'
+if [[ -z "\$vpn_dns" ]] ; then
+    # Parses DHCP foreign_option_* vars to automatically set DNS address translation:
+    for optionname in \${!foreign_option_*} ; do
+        option="\${!optionname}"
+        unset fops; fops=(\$option)
+        if [ \${fops[1]} == "DNS" ] ; then vpn_dns="\$vpn_dns \${fops[2]}" ; fi
+    done
+fi
+
+iptables -t nat -F PR-QBS
+if [[ -n "\$vpn_dns" ]] ; then
+    # Set DNS address translation in firewall:
+    for addr in \$vpn_dns; do
+        iptables -t nat -A PR-QBS -i vif+ -p udp --dport 53 -j DNAT --to \$addr
+        iptables -t nat -A PR-QBS -i vif+ -p tcp --dport 53 -j DNAT --to \$addr
+    done
+    su - -c 'notify-send "\$(hostname): LINK IS UP." --icon=network-idle' user
+else
+    su - -c 'notify-send "\$(hostname): LINK UP, NO DNS!" --icon=dialog-error' user
+fi
+
+;;
+down)
+su - -c 'notify-send "\$(hostname): LINK IS DOWN !" --icon=dialog-error' user
+
+# Restart the VPN automatically
+sleep 5s
+sudo /rw/config/rc.local
+;;
+esac
+EOF
+)
+	qube_write_file \
+		$_vm \
+		"root" \
+		/rw/config/vpn/qubes-vpn-handler.sh \
+        "${_text//\"/\\\"}"
+
+
+    _text=$(cat <<EOF
+#!/bin/bash
+#    Block forwarding of connections through upstream network device
+#    (in case the vpn tunnel breaks):
+iptables -I FORWARD -o eth0 -j DROP
+iptables -I FORWARD -i eth0 -j DROP
+ip6tables -I FORWARD -o eth0 -j DROP
+ip6tables -I FORWARD -i eth0 -j DROP
+
+#    Accept traffic to VPN
+iptables -P OUTPUT ACCEPT
+iptables -F OUTPUT
+
+#    Add the `qvpn` group to system, if it doesn't already exist
+if ! grep -q "^qvpn:" /etc/group ; then
+     groupadd -rf qvpn
+     sync
+fi
+sleep 2s
+
+#    Block non-VPN traffic to clearnet
+iptables -I OUTPUT -o eth0 -j DROP
+#    Allow traffic from the `qvpn` group to the uplink interface (eth0);
+#    Our VPN client will run with group `qvpn`.
+iptables -I OUTPUT -p all -o eth0 -m owner --gid-owner qvpn -j ACCEPT
+EOF
+)
+	qube_write_file \
+		$_vm \
+		"root" \
+		/rw/config/qubes-firewall-user-script \
+        "${_text//\"/\\\"}"
+
+    _text=$(cat <<EOF
+#!/bin/bash
+VPN_CLIENT='openvpn'
+VPN_OPTIONS='--cd /rw/config/vpn/ --config openvpn-client.ovpn --daemon'
+
+su - -c 'notify-send "\$(hostname): Starting \$VPN_CLIENT..." --icon=network-idle' user
+groupadd -rf qvpn ; sleep 2s
+sg qvpn -c "$VPN_CLIENT $VPN_OPTIONS"
+
+EOF
+)
+	qube_write_file \
+		$_vm \
+		"root" \
+		/rw/config/rc.local \
+        "${_text//\"/\\\"}"
+
+    _commands=$(cat <<EOF
+		sudo systemctl disable openvpn.service
+		mv /tmp/vpn.ovpn /rw/config/vpn/openvpn-client.ovpn
+		sudo chmod +x /rw/config/vpn/qubes-vpn-handler.sh
+		sudo chmod +x /rw/config/qubes-firewall-user-script
+		sudo chmod +x /rw/config/rc.local
+EOF
+)
+    qube_run_commands \
+        $_vm \
+        "root" \
+        "$_commands"
+
 
 }
 
 function build_vpn_dvm () {
     declare _vm=$1
+    declare _text
 
+    notify 2 "--build_vpn_dvm: _vm:$_vm"
+
+    _text=$(cat <<EOF
+firefox &
+nautilus &
+deluge &
+
+EOF
+)
+	qube_write_file \
+		$_vm \
+		"user" \
+		"/home/user/startup" \
+        "${_text//\"/\\\"}"
 }
 
 
@@ -1085,18 +1260,6 @@ VM_TEMPLATE_NAMES=(
     [fedora]="$_MASTER_FEDORA_TEMPLATE:"
     [congy]="$_MASTER_DEBIAN_TEMPLATE:congy77"
     [dev]="$_MASTER_DEBIAN_TEMPLATE:dev77"
-    [media]="$_MASTER_DEBIAN_TEMPLATE:media77"
-    [min]="$_MASTER_DEBIAN_TEMPLATE:min77"
-    [plus]="$_MASTER_DEBIAN_TEMPLATE:plus77"
-    [printer]="$_MASTER_DEBIAN_TEMPLATE:printer77"
-    [vpn]="$_MASTER_FEDORA_TEMPLATE:vpn77"
-)
-
-ORIG_VM_TEMPLATE_NAMES=( 
-    [debian]="$_MASTER_DEBIAN_TEMPLATE:"
-    [fedora]="$_MASTER_FEDORA_TEMPLATE:"
-    [congy]="$_MASTER_DEBIAN_TEMPLATE:congy77"
-    [dev]="$_MASTER_DEBIAN_TEMPLATE:dev77"
     [dvm]="$_MASTER_FEDORA_TEMPLATE:dvm77"
     [media]="$_MASTER_DEBIAN_TEMPLATE:media77"
     [min]="$_MASTER_DEBIAN_TEMPLATE:min77"
@@ -1104,24 +1267,11 @@ ORIG_VM_TEMPLATE_NAMES=(
     [printer]="$_MASTER_DEBIAN_TEMPLATE:printer77"
     [usb]="$_MASTER_FEDORA_TEMPLATE:usb77"
     [vpn]="$_MASTER_FEDORA_TEMPLATE:vpn77"
-    [zoom]="$_MASTER_DEBIAN_TEMPLATE:zoom77"
+    #[zoom]="$_MASTER_DEBIAN_TEMPLATE:zoom77"
 )
 
-VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
-    [congy88]="AppVM;${VM_TEMPLATE_NAMES[congy]};orange;4000;400;x;2;sys-firewall;0"
-    [dev88]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;x;0"
-    [study88]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;sys-firewall;0"
-    [email88]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;2000;600;15000;2;sys-firewall;0"
-    [files88]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;800;400;150000;1;x;0"
-    [fin88]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;1024;400;x;1;x;0"
-    [gpg88]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;800;400;x;1;x;0"
-    [epub88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;2000;500;50000;1;sys-firewall;0"
-    [work88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;20000;1;sys-firewall;0"
-    [media88]="AppVM;${VM_TEMPLATE_NAMES[media]};green;8192;1024;30720;2;sys-firewall;0"
-    [printer-dvm88]="AppVM;${VM_TEMPLATE_NAMES[printer]};red;974;350;x;1;sys-firewall;1"
-    )
 
-ORIG_VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
+VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
     [congy88]="AppVM;${VM_TEMPLATE_NAMES[congy]};orange;4000;400;x;2;sys-firewall;0"
     [dev88]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;x;0"
     [study88]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;sys-firewall;0"
@@ -1138,8 +1288,8 @@ ORIG_VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network
     [sys-vpn-ro88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};orange;500;400;x;1;sys-net;0"
     [media88]="AppVM;${VM_TEMPLATE_NAMES[media]};green;8192;1024;30720;2;sys-firewall;0"
     [printer-dvm88]="AppVM;${VM_TEMPLATE_NAMES[printer]};red;974;350;x;1;sys-firewall;1"
-    [usb88]="AppVM;${VM_TEMPLATE_NAMES[usb]};orange;4000;2000;22528;3;sys-firewall;0"
-    [zoom88]="AppVM;${VM_TEMPLATE_NAMES[zoom]};orange;4000;400;x;3;sys-firewall;1"
+    #[usb88]="AppVM;${VM_TEMPLATE_NAMES[usb]};orange;4000;2000;22528;3;sys-firewall;0"
+    #[zoom88]="AppVM;${VM_TEMPLATE_NAMES[zoom]};orange;4000;400;x;3;sys-firewall;1"
     )
 
 VM_SOFT=( 
