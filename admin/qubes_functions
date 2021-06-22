@@ -243,6 +243,10 @@ function qube_install_software () {
     declare _vm=$1
     declare _software=$2
     declare _ostype
+
+    if [[ -z $_software ]]; then
+        return 0
+    fi
     
     _ostype=$( qube_get_distribution $_vm )
     notify 2 "qube_install_software: vm:$_vm ostype:$_ostype software:$_software"
