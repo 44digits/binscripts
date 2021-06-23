@@ -621,11 +621,17 @@ function build_dvm_template () {
     declare _vm=$1
 
     config_template_firefox $_vm
+
+    qube_remove_incomming $_vm
+    qvm-shutdown $_vm
 }
 
 function build_fedoradvm_dvm  () {
     declare _vm=$1
     # nothing to do
+
+    qube_remove_incomming $_vm
+    qvm-shutdown $_vm
 }
 
 
@@ -634,12 +640,18 @@ function build_media_template () {
     declare _vm=$1
 
     config_template_firefox $_vm
+
+    qube_remove_incomming $_vm
+    qvm-shutdown $_vm
 }
 
 function build_media_appvm () {
     declare _vm=$1
 
     config_user $_vm
+
+    qube_remove_incomming $_vm
+    qvm-shutdown $_vm
 }
 
 
@@ -657,6 +669,9 @@ EOF
         $_vm \
         "root" \
         "$_commands"
+
+    qube_remove_incomming $_vm
+    qvm-shutdown $_vm
 }
 
 function build_email_appvm () {
