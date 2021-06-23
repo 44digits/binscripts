@@ -173,11 +173,10 @@ function qube_write_file () {
     declare _file=$3
     declare _lines="${@:4}"
     declare _line
-    declare _linefix
 
     notify 2 "qube_write_file: VM:$_vm user:$_user file:$_file"
 
-    qvm-run $__qvm_run_options -u "$_user" "$_vm" "echo > $_file"
+    qvm-run $__qvm_run_options -u "$_user" "$_vm" "touch $_file"
     qube_append_file $_vm $_user $_file "$_lines"
 }
 
@@ -188,11 +187,15 @@ function qube_append_file () {
     declare _file=$3
     declare _lines="${@:4}"
     declare _line
+    declare _linefix
 
     notify 2 "qube_append_file: VM:$_vm user:$_user file:$_file"
 
     while read -r _line <&3; do
-        _linefix=${_line//\"/\\\"}
+        _linefix=${_line//\"/\\\"}    # escape "
+        _linefix=${_linefix//$/\\$}   # escape $
+        _linefix=${_linefix//\`/\\\`} # escape `
+        notify 2 "  --$_linefix--"
         qvm-run $__qvm_run_options -u "$_user" "$_vm" "echo \"$_linefix\" >> $_file"
     done 3<<< "$_lines"
 }

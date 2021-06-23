@@ -919,6 +919,11 @@ function build_vpn_template () {
     notify 2 "--build_vpn_template: _vm:$_vm"
 
     config_template_firefox $_vm
+    qvm-run \
+        $__qvm_run_options \
+        -u root \
+        $_vm \
+		"systemctl disable openvpn.service"
 
     qube_remove_incomming $_vm
     qvm-shutdown $_vm
@@ -1031,7 +1036,7 @@ ip6tables -I FORWARD -i eth0 -j DROP
 iptables -P OUTPUT ACCEPT
 iptables -F OUTPUT
 
-#    Add the `qvpn` group to system, if it doesn't already exist
+#    Add the \`qvpn\` group to system, if it doesn't already exist
 if ! grep -q "^qvpn:" /etc/group ; then
      groupadd -rf qvpn
      sync
@@ -1040,8 +1045,8 @@ sleep 2s
 
 #    Block non-VPN traffic to clearnet
 iptables -I OUTPUT -o eth0 -j DROP
-#    Allow traffic from the `qvpn` group to the uplink interface (eth0);
-#    Our VPN client will run with group `qvpn`.
+#    Allow traffic from the \`qvpn\` group to the uplink interface (eth0);
+#    Our VPN client will run with group \`qvpn\`.
 iptables -I OUTPUT -p all -o eth0 -m owner --gid-owner qvpn -j ACCEPT
 
 EOF
@@ -1070,7 +1075,6 @@ EOF
         "$_text"
 
     _commands=$(cat <<EOF
-		sudo systemctl disable openvpn.service
 		mv /tmp/vpn.ovpn /rw/config/vpn/openvpn-client.ovpn
 		sudo chmod +x /rw/config/vpn/qubes-vpn-handler.sh
 		sudo chmod +x /rw/config/qubes-firewall-user-script
@@ -1461,6 +1465,7 @@ EOF
         deluge
         eog
         nautilus
+        openvpn
 EOF
     )
     [congy]=$(tr -s [:space:] '&' <<EOF
