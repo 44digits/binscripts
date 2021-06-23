@@ -571,11 +571,12 @@ EOF
         "/rw/config/qubes-bind-dirs.d/50_user.conf"
 
     _bashlines=$(cat <<EOF
-'#!/bin/bash'
-'/usr/bin/slack -s &'
-'/usr/bin/remmina &'
-'/usr/bin/firefox &'
-'gvim /home/user/firstDay.notes &'
+#!/bin/bash
+
+/usr/bin/slack -s &
+/usr/bin/remmina &
+/usr/bin/firefox &
+gvim /home/user/firstDay.notes &
 
 EOF
 )
@@ -600,7 +601,6 @@ EOF
         "/home/user/.local/share/remmina/group_rdp_congy.remmina"
 
     _bashlines=$(cat <<EOF
-
         alias aross-d1=\"sudo mount -t cifs -o username=aross //aross-d1.congruex.com/c$/Users/aross/Downloads /home/user/mounts/aross-d1 -o uid=1000,gid=1000\"
         alias um-aross-d1=\"sudo umount /home/user/mounts/aross-d1\"
 
@@ -851,8 +851,8 @@ EOF
     qube_run_commands $_vm "root" "$_commands"
 
     _commands=$(cat <<EOF
-'  <policy domain="coder" rights="read|write" pattern="PDF" />'
-'</policymap>'
+  <policy domain="coder" rights="read|write" pattern="PDF" />
+</policymap>
 
 EOF
 )
@@ -896,6 +896,9 @@ function build_usb_template () {
     declare _vm=$1
 
     config_template_firefox $_vm
+
+    qube_remove_incomming $_vm
+    qvm-shutdown $_vm
 }
 
 
@@ -904,6 +907,9 @@ function build_zoom_template () {
     declare _vm=$1
 
     config_template_firefox $_vm
+
+    qube_remove_incomming $_vm
+    qvm-shutdown $_vm
 }
 
 
@@ -913,6 +919,9 @@ function build_vpn_template () {
     notify 2 "--build_vpn_template: _vm:$_vm"
 
     config_template_firefox $_vm
+
+    qube_remove_incomming $_vm
+    qvm-shutdown $_vm
 }
 
 function build_vpnca () {
@@ -923,7 +932,7 @@ function build_vpnca () {
     qube_copy_file \
         $_vm \
         "user" \
-        "$_CONFIGDIR/ca.vpn.ovpn.secret" \
+        "$_CONFIGDIR/vpn/ca.ovpn.secret" \
         "/tmp/vpn.ovpn"
 
 	build_vpn_server $_vm
@@ -938,7 +947,7 @@ function build_vpnro () {
     qube_copy_file \
         $_vm \
         "user" \
-        "$_CONFIGDIR/ro.vpn.ovpn.secret" \
+        "$_CONFIGDIR/vpn/ro.ovpn.secret" \
         "/tmp/vpn.ovpn"
 
 	build_vpn_server $_vm
@@ -968,46 +977,46 @@ export vpn_dns="8.8.8.8 8.8.4.4"
 case "\$1" in
 
 up)
-# To override DHCP DNS, assign DNS addresses to 'vpn_dns' env variable before calling this script;
-# Format is 'X.X.X.X  Y.Y.Y.Y [...]'
-if [[ -z "\$vpn_dns" ]] ; then
-    # Parses DHCP foreign_option_* vars to automatically set DNS address translation:
-    for optionname in \${!foreign_option_*} ; do
-        option="\${!optionname}"
-        unset fops; fops=(\$option)
-        if [ \${fops[1]} == "DNS" ] ; then vpn_dns="\$vpn_dns \${fops[2]}" ; fi
-    done
-fi
+    # To override DHCP DNS, assign DNS addresses to 'vpn_dns' env variable before calling this script;
+    # Format is 'X.X.X.X  Y.Y.Y.Y [...]'
+    if [[ -z "\$vpn_dns" ]] ; then
+        # Parses DHCP foreign_option_* vars to automatically set DNS address translation:
+        for optionname in \${!foreign_option_*} ; do
+            option="\${!optionname}"
+            unset fops; fops=(\$option)
+            if [ \${fops[1]} == "DNS" ] ; then vpn_dns="\$vpn_dns \${fops[2]}" ; fi
+        done
+    fi
 
-iptables -t nat -F PR-QBS
-if [[ -n "\$vpn_dns" ]] ; then
-    # Set DNS address translation in firewall:
-    for addr in \$vpn_dns; do
-        iptables -t nat -A PR-QBS -i vif+ -p udp --dport 53 -j DNAT --to \$addr
-        iptables -t nat -A PR-QBS -i vif+ -p tcp --dport 53 -j DNAT --to \$addr
-    done
-    su - -c 'notify-send "\$(hostname): LINK IS UP." --icon=network-idle' user
-else
-    su - -c 'notify-send "\$(hostname): LINK UP, NO DNS!" --icon=dialog-error' user
-fi
+    iptables -t nat -F PR-QBS
+    if [[ -n "\$vpn_dns" ]] ; then
+        # Set DNS address translation in firewall:
+        for addr in \$vpn_dns; do
+            iptables -t nat -A PR-QBS -i vif+ -p udp --dport 53 -j DNAT --to \$addr
+            iptables -t nat -A PR-QBS -i vif+ -p tcp --dport 53 -j DNAT --to \$addr
+        done
+        su - -c 'notify-send "\$(hostname): LINK IS UP" --icon=network-idle' user
+    else
+        su - -c 'notify-send "\$(hostname): LINK UP, NO DNS" --icon=dialog-error' user
+    fi
 
 ;;
 down)
-su - -c 'notify-send "\$(hostname): LINK IS DOWN !" --icon=dialog-error' user
+    su - -c 'notify-send "\$(hostname): LINK IS DOWN" --icon=dialog-error' user
 
-# Restart the VPN automatically
-sleep 5s
-sudo /rw/config/rc.local
-;;
+    # Restart the VPN automatically
+    sleep 5s
+    sudo /rw/config/rc.local
+    ;;
 esac
+
 EOF
 )
 	qube_write_file \
 		$_vm \
 		"root" \
 		/rw/config/vpn/qubes-vpn-handler.sh \
-        "${_text//\"/\\\"}"
-
+        "$_text"
 
     _text=$(cat <<EOF
 #!/bin/bash
@@ -1034,13 +1043,14 @@ iptables -I OUTPUT -o eth0 -j DROP
 #    Allow traffic from the `qvpn` group to the uplink interface (eth0);
 #    Our VPN client will run with group `qvpn`.
 iptables -I OUTPUT -p all -o eth0 -m owner --gid-owner qvpn -j ACCEPT
+
 EOF
 )
 	qube_write_file \
 		$_vm \
 		"root" \
 		/rw/config/qubes-firewall-user-script \
-        "${_text//\"/\\\"}"
+        "$_text"
 
     _text=$(cat <<EOF
 #!/bin/bash
@@ -1049,7 +1059,7 @@ VPN_OPTIONS='--cd /rw/config/vpn/ --config openvpn-client.ovpn --daemon'
 
 su - -c 'notify-send "\$(hostname): Starting \$VPN_CLIENT..." --icon=network-idle' user
 groupadd -rf qvpn ; sleep 2s
-sg qvpn -c "$VPN_CLIENT $VPN_OPTIONS"
+sg qvpn -c "\$VPN_CLIENT \$VPN_OPTIONS"
 
 EOF
 )
@@ -1057,7 +1067,7 @@ EOF
 		$_vm \
 		"root" \
 		/rw/config/rc.local \
-        "${_text//\"/\\\"}"
+        "$_text"
 
     _commands=$(cat <<EOF
 		sudo systemctl disable openvpn.service
@@ -1092,7 +1102,7 @@ EOF
 		$_vm \
 		"user" \
 		"/home/user/startup" \
-        "${_text//\"/\\\"}"
+        "$_text"
 }
 
 
