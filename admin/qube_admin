@@ -327,6 +327,9 @@ function appvm_install_additions () {
         work88)
             build_work_appvm $_appvm
             ;;
+        plus-dvm88)
+            build_plus_dvm $_appvm
+            ;;
         zoom88)
             ;;
         *)
@@ -400,6 +403,8 @@ function config_user () {
         dconf write /org/gnome/nautilus/preferences/default-folder-viewer \'list-view\'
         dconf write /org/gtk/settings/file-chooser/expand-folders true
         dconf write /org/gtk/settings/file-chooser/sort-directories-first true
+        dconf write /org/gnome/terminal/legacy/theme-variant \"\'dark\'\"
+
 EOF
 )
 
@@ -435,6 +440,9 @@ function build_dev_template () {
     declare _vm=$1
 
     config_template_firefox $_vm
+
+    qube_remove_incomming $_vm
+    qvm-shutdown $_vm
 }
 
 
@@ -552,14 +560,9 @@ EOF
 
     qube_copy_file \
         $_vm \
-        "root" \
+        "user" \
         "$_CONFIGDIR/congy/vpn.config.secret" \
-        "/etc/openfortivpn/config"
-    qvm-run \
-        $__qvm_run_options \
-        -u root \
-        $_vm \
-        "chmod 600 /etc/openfortivpn/config"
+        "/home/user/config"
 
     qube_copy_file \
         $_vm \
@@ -568,21 +571,20 @@ EOF
         "/rw/config/qubes-bind-dirs.d/50_user.conf"
 
     _bashlines=$(cat <<EOF
-#!/bin/bash
-
-/usr/bin/slack -s &
-/usr/bin/remmina &
-/usr/bin/firefox &
-gvim /home/user/firstDay.notes &
+'#!/bin/bash'
+'/usr/bin/slack -s &'
+'/usr/bin/remmina &'
+'/usr/bin/firefox &'
+'gvim /home/user/firstDay.notes &'
 
 EOF
 )
+
 	qube_write_file \
 		$_vm \
 		"user" \
         "/home/user/startup" \
-		/rw/config/vpn/qubes-vpn-handler.sh \
-        "${_bashlines//\"/\\\"}"
+        "$_bashlines"
 
     _commands=$(cat <<EOF
         mkdir -p /home/user/mounts/aross-d1
@@ -612,7 +614,6 @@ EOF
 
     qube_remove_incomming $_vm
     qvm-shutdown $_vm
-
 }
 
 
@@ -747,6 +748,9 @@ function build_plus_template () {
     declare _vm=$1
 
     config_template_firefox $_vm
+
+    qube_remove_incomming $_vm
+    qvm-shutdown $_vm
 }
 
 function build_epub_appvm () {
@@ -761,7 +765,7 @@ function build_epub_appvm () {
         randomChars.py; 
     do
         qube_copy_file \
-            files \
+            $_vm \
             "root" \
             "$_UTILITYDIR/$_f" \
             "/usr/local/bin/$_f"
@@ -783,7 +787,29 @@ function build_work_appvm () {
         randomChars.py; 
     do
         qube_copy_file \
-            files \
+            $_vm \
+            "root" \
+            "$_UTILITYDIR/$_f" \
+            "/usr/local/bin/$_f"
+    done
+
+    qube_remove_incomming $_vm
+    qvm-shutdown $_vm
+}
+
+function build_plus_dvm () {
+    declare _vm=$1
+
+    config_user $_vm
+
+    for _f in \
+        appendPDF \
+        doublePDF \
+        img2pdf \
+        randomChars.py; 
+    do
+        qube_copy_file \
+            $_vm \
             "root" \
             "$_UTILITYDIR/$_f" \
             "/usr/local/bin/$_f"
@@ -894,7 +920,8 @@ function build_vpnca () {
 
     notify 2 "--build_vpnca: _vm:$_vm"
 
-    qube_copy_file $_vm \
+    qube_copy_file \
+        $_vm \
         "user" \
         "$_CONFIGDIR/ca.vpn.ovpn.secret" \
         "/tmp/vpn.ovpn"
@@ -908,7 +935,8 @@ function build_vpnro () {
 
     notify 2 "--build_vpnro: _vm:$_vm"
 
-    qube_copy_file $_vm \
+    qube_copy_file \
+        $_vm \
         "user" \
         "$_CONFIGDIR/ro.vpn.ovpn.secret" \
         "/tmp/vpn.ovpn"
@@ -1088,11 +1116,13 @@ function create_vpn () {
         --prop=vcpus=2 \
         --prop=provides_network=True \
         $_vpnvm
-    qube_copy_file $_vpnvm \
+    qube_copy_file \
+        $_vpnvm \
         "user" \
         "$_CONFIGDIR/vpn.ovpn" \
         "/tmp/vpn.ovpn"
-    qube_copy_file $_vpnvm \
+    qube_copy_file \
+        $_vpnvm \
         "user" \
         "$_CONFIGDIR/configure_vpn" \
         "/tmp/configure_vpn"
@@ -1115,7 +1145,8 @@ function create_vpn () {
     qvm-features $_vpnappdvm appmenus-dispvm 1
     qvm-start $_vpnappdvm
 
-    qube_copy_file $_vpnappdvm \
+    qube_copy_file \
+        $_vpnappdvm \
         "user" \ 
         "$_CONFIGDIR/configure_vpn_client" \
         "/tmp/configure_vpn_client"
@@ -1309,13 +1340,14 @@ VM_TEMPLATE_NAMES=(
 VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
     [congy88]="AppVM;${VM_TEMPLATE_NAMES[congy]};orange;4000;400;x;2;sys-firewall;0"
     [dev88]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;x;0"
-    [study88]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;sys-firewall;0"
+    [study88]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;x;2;sys-firewall;0"
     [email88]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;2000;600;15000;2;sys-firewall;0"
     [files88]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;800;400;150000;1;x;0"
     [fin88]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;1024;400;x;1;x;0"
     [gpg88]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;800;400;x;1;x;0"
-    [epub88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;2000;500;50000;1;sys-firewall;0"
-    [work88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;20000;1;sys-firewall;0"
+    [epub88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;2000;500;50000;1;x;0"
+    [work88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;x;2;x;0"
+    [plus-dvm88]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;2000;600;x;2;sys-firewall;1"
     [vpn-dvm88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;9216;2;sys-vpn-ro;1"
     [vpn-dvm-big88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;28672;2;sys-vpn-ro;1"
     [fedora-dvm88]="AppVM;${VM_TEMPLATE_NAMES[dvm]};red;2000;600;x;2;sys-firewall;1"
@@ -1348,7 +1380,6 @@ VM_SOFT=(
         python3-pip
         remmina
         rsync
-        s3cmd
         screen
         texlive 
         texlive-fonts-extra 
