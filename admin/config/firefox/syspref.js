@@ -43,6 +43,7 @@ pref("browser.startup.homepage_override.mstone", "ignore");
 pref("browser.startup.page", 0);
 pref("browser.tabs.warnOnClose", false);
 pref("browser.tabs.warnOnCloseOtherTabs", false);
+pref("browser.toolbars.bookmarks.visibility", false);
 pref("browser.urlbar.suggest.topsites", false);
 pref("datareporting.healthreport.service.enabled", false);
 pref("datareporting.healthreport.service.firstRun", false);
@@ -99,5 +100,4 @@ pref("toolkit.telemetry.reportingpolicy.firstRun", false);
 pref("toolkit.telemetry.shutdownPingSender.enabled", false);
 pref("toolkit.telemetry.unified", false);
 pref("toolkit.telemetry.updatePing.enabled", false);
-
 
