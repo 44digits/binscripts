@@ -413,8 +413,8 @@ EOF
         "${_lines//\"/\\\"}"
 
     for _f in \
-        "_vimrc" \
-        "_screenrc" ;
+        _vimrc \
+        _screenrc ;
     do
         _filename=$(echo $_f | tr '_' '.')
         qube_copy_file \
@@ -490,7 +490,7 @@ function build_congy_template () {
         slack ;
     do
         _debpath=$(ls -t $_SOFTWARE/$_f* | head -1)
-        _deb=${_debpath/$_SOFTWARE\//}
+        _deb=$(basename $_debpath)
         qube_copy_file \
             $_vm \
             "root" \
@@ -784,25 +784,44 @@ function build_printer_template () {
     declare _vm=$1
     declare _tgzpath
     declare _print_tgz
+    declare _print_sh
     declare _commands
+    declare _im_policy=/etc/ImageMagick-6/policy.xml 
 
     notify 2 "--build_printer_template: _vm:$_vm"
 
     config_template_firefox $_vm
 
     _tgzpath=$(ls -t $_SOFTWARE/*brprint* | head -1)
-    _print_tgz=${_debpath/$_SOFTWARE\//}
+    _print_tgz=$(basename $_tgzpath)
+    _print_sh="${_print_tgz%.*}"
+
     qvm-copy-to-vm $_vm "$_SOFTWARE/$_print_tgz"
 
     notify 1 "--Install printer soft: model number MFCL2710DW"
+    qvm-prefs $_vm netvm "sys-firewall"
 
     _commands=$(cat <<EOF
         gunzip /home/user/QubesIncoming/dom0/$_print_tgz
-        bash /home/user/QubesIncoming/dom0/$_print_tgz
+        bash /home/user/QubesIncoming/dom0/$_print_sh
+        sed -i '/<\/policymap>/d' $_im_policy
 EOF
 )
     qube_run_commands $_vm "root" "$_commands"
 
+    _commands=$(cat <<EOF
+'  <policy domain="coder" rights="read|write" pattern="PDF" />'
+'</policymap>'
+
+EOF
+)
+    qube_append_file \
+        $_vm \
+        "root" \
+        "$_im_policy" \
+        "$_commands"
+
+    qvm-prefs $_vm netvm ""
     qube_remove_incomming $_vm
     qvm-shutdown $_vm 
 }
@@ -825,6 +844,9 @@ function build_printer_dvm () {
             "$_UTILITYDIR/$_f" \
             "/usr/local/bin/$_f"
     done
+
+    qube_remove_incomming $_vm
+    qvm-shutdown $_vm
 }
 
 
@@ -1373,7 +1395,7 @@ EOF
         evince
         gimp
         nautilus
-        pdfshuffler
+        pdfarranger
         pdftk
         xsane
 EOF
