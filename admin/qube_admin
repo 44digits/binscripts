@@ -442,7 +442,7 @@ function build_dev_template () {
     config_template_firefox $_vm
 
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 
@@ -481,7 +481,7 @@ function build_dev_appvm () {
     done
 
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 
@@ -533,7 +533,7 @@ function build_congy_template () {
         "systemctl enable openfortivpn"
 
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 
@@ -613,7 +613,7 @@ EOF
         "$_bashlines"
 
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 
@@ -624,7 +624,7 @@ function build_dvm_template () {
     config_template_firefox $_vm
 
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 function build_fedoradvm_dvm  () {
@@ -632,7 +632,7 @@ function build_fedoradvm_dvm  () {
     # nothing to do
 
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 
@@ -643,7 +643,7 @@ function build_media_template () {
     config_template_firefox $_vm
 
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 function build_media_appvm () {
@@ -652,7 +652,7 @@ function build_media_appvm () {
     config_user $_vm
 
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 
@@ -672,7 +672,7 @@ EOF
         "$_commands"
 
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 function build_email_appvm () {
@@ -739,7 +739,7 @@ function build_min_appvm () {
     done
 
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 
@@ -750,7 +750,7 @@ function build_plus_template () {
     config_template_firefox $_vm
 
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 function build_epub_appvm () {
@@ -772,7 +772,7 @@ function build_epub_appvm () {
     done
 
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 function build_work_appvm () {
@@ -794,7 +794,7 @@ function build_work_appvm () {
     done
 
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 function build_plus_dvm () {
@@ -816,7 +816,7 @@ function build_plus_dvm () {
     done
 
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 
@@ -864,7 +864,7 @@ EOF
 
     qvm-prefs $_vm netvm ""
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm 
+    qvm-shutdown --wait $_vm 
 }
 
 function build_printer_dvm () {
@@ -887,7 +887,7 @@ function build_printer_dvm () {
     done
 
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 
@@ -898,7 +898,7 @@ function build_usb_template () {
     config_template_firefox $_vm
 
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 
@@ -909,7 +909,7 @@ function build_zoom_template () {
     config_template_firefox $_vm
 
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 
@@ -926,7 +926,7 @@ function build_vpn_template () {
 		"systemctl disable openvpn.service"
 
     qube_remove_incomming $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 function build_vpnca () {
@@ -941,7 +941,7 @@ function build_vpnca () {
         "/tmp/vpn.ovpn"
 
 	build_vpn_server $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 function build_vpnro () {
@@ -956,7 +956,7 @@ function build_vpnro () {
         "/tmp/vpn.ovpn"
 
 	build_vpn_server $_vm
-    qvm-shutdown $_vm
+    qvm-shutdown --wait $_vm
 }
 
 function build_vpn_server () {
@@ -1170,7 +1170,7 @@ function create_vpn () {
         -u root \
         $_vpnappdvm \
         "bash /tmp/configure_vpn_client"
-    qvm-shutdown $_vpnappdvm 
+    qvm-shutdown --wait $_vpnappdvm 
 }
 
 
@@ -1181,7 +1181,7 @@ function install_printer_soft () {
     notify 1 "--install_printer_soft TEMPLATE:$TEMPLATE"
     sleep 5 # wait for install to complete
 
-    qvm-shutdown $TEMPLATE
+    qvm-shutdown --wait $TEMPLATE
     qvm-prefs $TEMPLATE netvm sys-firewall
     qvm-start $TEMPLATE
 
@@ -1194,7 +1194,7 @@ function install_printer_soft () {
     qvm-run -p $TEMPLATE "rm -f /home/user/*.deb"
     qvm-run -p $TEMPLATE "rm -f /home/user/uninstaller*"
 
-    qvm-shutdown $TEMPLATE 
+    qvm-shutdown --wait $TEMPLATE 
     qvm-prefs $TEMPLATE netvm ''
 }
 
@@ -1225,7 +1225,7 @@ function create_printer_appvms() {
     qvm-run -p -u root $appvm "chmod +x /usr/local/bin/img2pdf"
 
     qvm-run -p $appvm  "rm -rf /home/user/QubesIncoming"
-    qvm-shutdown $appvm
+    qvm-shutdown --wait $appvm
 }
 
 
@@ -1318,7 +1318,7 @@ function main () {
 
                 qube_update $_templatename
                 qube_install_software $_templatename $_softwarelist
-                qvm-shutdown $_templatename
+                qvm-shutdown --wait $_templatename
             fi
             ;;
         *) 
