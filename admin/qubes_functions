@@ -195,7 +195,6 @@ function qube_append_file () {
         _linefix=${_line//\"/\\\"}    # escape "
         _linefix=${_linefix//$/\\$}   # escape $
         _linefix=${_linefix//\`/\\\`} # escape `
-        notify 2 "  --$_linefix--"
         qvm-run $__qvm_run_options -u "$_user" "$_vm" "echo \"$_linefix\" >> $_file"
     done 3<<< "$_lines"
 }
