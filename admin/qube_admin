@@ -689,6 +689,9 @@ function build_email_appvm () {
     done
 
     build_min_appvm $_vm
+
+    qube_remove_incomming $_vm
+    qvm-shutdown --wait $_vm
 }
 
 function build_fin_appvm () {
@@ -705,6 +708,9 @@ function build_fin_appvm () {
     done
 
     build_min_appvm $_vm
+
+    qube_remove_incomming $_vm
+    qvm-shutdown --wait $_vm
 }
 
 function build_gpg_appvm () {
@@ -718,6 +724,9 @@ function build_gpg_appvm () {
         "sudo apt-get install qubes-gpg-split"
 
     build_min_appvm $_vm
+
+    qube_remove_incomming $_vm
+    qvm-shutdown --wait $_vm
 }
 
 function build_min_appvm () {
@@ -738,8 +747,6 @@ function build_min_appvm () {
             "/usr/local/bin/$_f"
     done
 
-    qube_remove_incomming $_vm
-    qvm-shutdown --wait $_vm
 }
 
 
@@ -921,11 +928,11 @@ function build_vpn_template () {
     notify 2 "--build_vpn_template: _vm:$_vm"
 
     config_template_firefox $_vm
-    qvm-run \
-        $__qvm_run_options \
-        -u root \
-        $_vm \
-		"systemctl disable openvpn.service"
+    #qvm-run \
+    #    $__qvm_run_options \
+    #    -u root \
+    #    $_vm \
+	#	"systemctl disable openvpn.service"
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
