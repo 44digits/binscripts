@@ -198,7 +198,6 @@ function create_all_appvms () {
     notify 2 "--create_all_appvms, _template:$_templatevm"
     if [[ "$_templatevm" == "all" ]]; then
         for _appvm in "${!VM_CONFIG[@]}"; do
-            echo " -- tyring to create $_appvm"
             if create_appvm $_appvm ${VM_CONFIG[$_appvm]}; then
                 appvm_install_additions $_appvm
             fi
@@ -296,7 +295,7 @@ function appvm_install_additions () {
             build_fedoradvm_dvm $_appvm
             ;;
         files88)
-            build_min_appvm $_appvm
+            build_files_appvm $_appvm
             ;;
         fin88)
             build_fin_appvm $_appvm
@@ -687,6 +686,15 @@ function build_email_appvm () {
             "$_CONFIGDIR/email/$_f" \
             "/usr/local/bin/$_f"
     done
+
+    build_min_appvm $_vm
+
+    qube_remove_incomming $_vm
+    qvm-shutdown --wait $_vm
+}
+
+function build_files_appvm () {
+    declare _vm=$1
 
     build_min_appvm $_vm
 
@@ -1388,14 +1396,14 @@ VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
     [gpg88]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;800;400;x;1;x;0"
     [epub88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;2000;500;50000;1;x;0"
     [work88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;x;2;x;0"
-    [plus-dvm88]="DispVM;${VM_TEMPLATE_NAMES[plus]};red;2000;600;x;2;sys-firewall;1"
-    [vpn-dvm88]="DispVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;9216;2;sys-vpn-ro88;1"
-    [vpn-dvm-big88]="DispVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;28672;2;sys-vpn-ro88;1"
-    [fedora-dvm88]="DispVM;${VM_TEMPLATE_NAMES[dvm]};red;2000;600;x;2;sys-firewall;1"
-    [sys-vpn-ca88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};orange;500;400;x;1;sys-net;0"
+    [plus-dvm88]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;2000;600;x;2;sys-firewall;1"
+    [vpn-dvm88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;9216;2;sys-vpn-ro88;1"
+    [vpn-dvm-big88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;28672;2;sys-vpn-ro88;1"
+    [fedora-dvm88]="AppVM;${VM_TEMPLATE_NAMES[dvm]};red;2000;600;x;2;sys-firewall;1"
+    #[sys-vpn-ca88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};orange;500;400;x;1;sys-net;0"
     [sys-vpn-ro88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};orange;500;400;x;1;sys-net;0"
     [media88]="AppVM;${VM_TEMPLATE_NAMES[media]};green;8192;1024;30720;2;sys-firewall;0"
-    [printer-dvm88]="DispVM;${VM_TEMPLATE_NAMES[printer]};red;974;350;x;1;sys-firewall;1"
+    [printer-dvm88]="AppVM;${VM_TEMPLATE_NAMES[printer]};red;974;350;x;1;sys-firewall;1"
     #[usb88]="AppVM;${VM_TEMPLATE_NAMES[usb]};orange;4000;2000;22528;3;sys-firewall;0"
     #[zoom88]="AppVM;${VM_TEMPLATE_NAMES[zoom]};orange;4000;400;x;3;sys-firewall;1"
     )
