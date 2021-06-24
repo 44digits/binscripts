@@ -817,6 +817,7 @@ function build_plus_dvm () {
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
+    qvm-features vpn-dvm88 appmenus-dispvm 1
 }
 
 
@@ -888,6 +889,7 @@ function build_printer_dvm () {
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
+    qvm-features vpn-dvm88 appmenus-dispvm 1
 }
 
 
@@ -941,6 +943,7 @@ function build_vpnca () {
         "/tmp/vpn.ovpn"
 
 	build_vpn_server $_vm
+    qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
 }
 
@@ -956,6 +959,7 @@ function build_vpnro () {
         "/tmp/vpn.ovpn"
 
 	build_vpn_server $_vm
+    qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
 }
 
@@ -1091,11 +1095,17 @@ EOF
 
 function build_vpn_dvm () {
     declare _vm=$1
+    declare _startupscript="/home/user/startup"
     declare _text
 
     notify 2 "--build_vpn_dvm: _vm:$_vm"
+    _netvm=$(qvm-prefs $_vm netvm)
+    notify 2 "--netvm: $_netvm"
+    qvm-prefs $_vm netvm ""
 
     _text=$(cat <<EOF
+#!/bin/bash
+
 firefox &
 nautilus &
 deluge &
@@ -1105,8 +1115,19 @@ EOF
 	qube_write_file \
 		$_vm \
 		"user" \
-		"/home/user/startup" \
+        "$_startupscript" \
         "$_text"
+
+    qvm-run $__qvm_run_options \
+        -u user \
+        $_vm \
+        "chmod +x $_startupscript"
+
+    qube_remove_incomming $_vm
+    qvm-shutdown --wait $_vm
+    qvm-prefs $_vm netvm $_netvm
+    qvm-features vpn-dvm88 appmenus-dispvm 1
+
 }
 
 
@@ -1362,8 +1383,8 @@ VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
     [epub88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;2000;500;50000;1;x;0"
     [work88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;x;2;x;0"
     [plus-dvm88]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;2000;600;x;2;sys-firewall;1"
-    [vpn-dvm88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;9216;2;sys-vpn-ro;1"
-    [vpn-dvm-big88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;28672;2;sys-vpn-ro;1"
+    [vpn-dvm88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;9216;2;sys-vpn-ro88;1"
+    [vpn-dvm-big88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;28672;2;sys-vpn-ro88;1"
     [fedora-dvm88]="AppVM;${VM_TEMPLATE_NAMES[dvm]};red;2000;600;x;2;sys-firewall;1"
     [sys-vpn-ca88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};orange;500;400;x;1;sys-net;0"
     [sys-vpn-ro88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};orange;500;400;x;1;sys-net;0"
@@ -1486,4 +1507,10 @@ EOF
 
 
 main "$@"
+
+
+
+# todo
+# qvm-appmenus printer
+
 
