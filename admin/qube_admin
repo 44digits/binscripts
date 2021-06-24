@@ -659,6 +659,7 @@ function build_fedoradvm_dvm  () {
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
+    qvm-features $_vm appmenus-dispvm 1
 }
 
 
@@ -859,7 +860,7 @@ function build_plus_dvm () {
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
-    qvm-features vpn-dvm88 appmenus-dispvm 1
+    qvm-features $_vm appmenus-dispvm 1
 }
 
 
@@ -931,7 +932,7 @@ function build_printer_dvm () {
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
-    qvm-features vpn-dvm88 appmenus-dispvm 1
+    qvm-features $_vm appmenus-dispvm 1
 }
 
 
@@ -1168,7 +1169,7 @@ EOF
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
     qvm-prefs $_vm netvm $_netvm
-    qvm-features vpn-dvm88 appmenus-dispvm 1
+    qvm-features $_vm appmenus-dispvm 1
 
 }
 
