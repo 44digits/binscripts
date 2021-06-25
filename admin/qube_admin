@@ -390,6 +390,7 @@ function config_user () {
     declare _appvm=$1
     declare _commands
     declare _filename
+    declare _lines
 
     notify 2 "--config_user _appvm:$_appvm"
     qvm-start --skip-if-running $_appvm
@@ -409,12 +410,23 @@ EOF
 
     qube_run_commands $_appvm "user" "$_commands"
 
-    declare _lines=$(cat $_CONFIGDIR/dotfiles/__bashrc)
+    _lines=$(cat <<EOF
+alias rm="rm -i"
+alias trash="gio trash"
+alias pvc="python3.7 -m venv venv"
+alias pva="source ./venv/bin/activate"
+
+export EDITOR="/usr/bin/vim"
+export QUBES_GPG_DOMAIN=gpg
+export GOPATH=$HOME/go
+
+EOF
+)
     qube_append_file \
         $_appvm \
         "user" \
         "/home/user/.bashrc" \
-        "${_lines//\"/\\\"}"
+        "$_lines"
 
     for _f in \
         _vimrc \
@@ -571,7 +583,6 @@ function build_congy_appvm () {
     declare _usb01="dom0:00_1d.0"
 
     qvm-prefs $_vm virt_mode pv
-    qvm-pci attach $_vm $_usb01 --persistent -o no-strict-reset=True
 
     config_user $_vm
     config_user_firefox $_vm
@@ -627,8 +638,8 @@ EOF
         "/home/user/.local/share/remmina/group_rdp_congy.remmina"
 
     _bashlines=$(cat <<EOF
-        alias aross-d1=\"sudo mount -t cifs -o username=aross //aross-d1.congruex.com/c$/Users/aross/Downloads /home/user/mounts/aross-d1 -o uid=1000,gid=1000\"
-        alias um-aross-d1=\"sudo umount /home/user/mounts/aross-d1\"
+        alias aross-d1="sudo mount -t cifs -o username=aross //aross-d1.congruex.com/c$/Users/aross/Downloads /home/user/mounts/aross-d1 -o uid=1000,gid=1000"
+        alias um-aross-d1="sudo umount /home/user/mounts/aross-d1"
 
 EOF
 )
@@ -640,6 +651,11 @@ EOF
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
+    qvm-pci attach \
+        $_vm \
+        $_usb01 \
+        --persistent \
+        -o no-strict-reset=True
 }
 
 
@@ -1416,7 +1432,7 @@ VM_TEMPLATE_NAMES=(
 
 
 VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
-    [congy88]="AppVM;${VM_TEMPLATE_NAMES[congy]};orange;4000;400;x;2;sys-firewall;0"
+    [congy88]="AppVM;${VM_TEMPLATE_NAMES[congy]};orange;0;4000;x;4;sys-firewall;0"
     [dev88]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;x;0"
     [email88]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;2000;600;15000;2;sys-firewall;0"
     [files88]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;800;400;150000;1;x;0"
