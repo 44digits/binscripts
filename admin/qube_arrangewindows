@@ -67,23 +67,23 @@ win_id=$(get_windowid_xdotool "workflowy")
 set_window_geom $win_id 773 30 900 850 0 0
 
 # congy terminal
-win_id=$(get_windowid_wmctrl "congy5:gnome-terminal")
+win_id=$(get_windowid_wmctrl "congy:gnome-terminal")
 set_window_geom $win_id 938 30 734 459 1 0
 
 # congy slack
-win_id=$(get_windowid_wmctrl "congy5:slack")
+win_id=$(get_windowid_wmctrl "congy:slack")
 set_window_geom $win_id 0 472 1000 550 1 0
 
 # congy firefox
-win_id=$(get_windowid_wmctrl "congy5:Navigator")
+win_id=$(get_windowid_wmctrl "congy:Navigator")
 set_window_geom $win_id 250 170 1200 852 1 0
 
 # congy gvim
-win_id=$(get_windowid_wmctrl "congy5:gvim")
+win_id=$(get_windowid_wmctrl "congy:gvim")
 set_window_geom $win_id 892 104 780 748 1 0
 
 # congy remmina
-win_id=$(get_windowid_wmctrl "congy5:org.remmina")
+win_id=$(get_windowid_wmctrl "congy:org.remmina")
 set_window_geom $win_id 1680 30 779 456 1 0
 
 # vpn
