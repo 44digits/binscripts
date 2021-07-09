@@ -72,7 +72,7 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
 EOF
 )
 
-declare __DVM=fedora-32-dvm88
+declare __DVM=fedora-dvm88
 declare __PLUSDVM=plus-dvm88
 declare __VPNDVM=vpn-dvm88
 declare __VPN_NETWORK=sys-vpn-ro88
@@ -80,6 +80,9 @@ declare __CONGY=congy88
 declare __EMAIL=email88
 declare __EPUB=epub88
 declare __MEDIA=media88
+declare __PRINTERDVM=printer-dvm88
+declare __GPG=gpg88
+declare __FIREWALL=sys-firewall
 declare __qvm_run_options="-vp --color-stderr=37"
 declare __lockme=/tmp/launcher.lock
 
@@ -326,10 +329,10 @@ function launcher_main () {
                     --entry \
                     --title="Pass:")
                 if [[ ! -z "$_passstring" ]]; then
-                    safe_execute_vm gpg \
+                    safe_execute_vm $__GPG \
                         qvm-run \
                         $__qvm_run_options \
-                        gpg \
+                        $__GPG \
                         "\"gnome-terminal --geometry=115x10 -e 'bash -c \\\"grep -i $_passstring $_loginfile;bash\\\" '\""
 
                 fi
@@ -378,10 +381,10 @@ function launcher_main () {
                 ;; 
 
             classicFM)
-                safe_execute_vm media \
+                safe_execute_vm $__MEDIA \
                     qvm-run \
                         $__qvm_run_options \
-                        media \
+                        $__MEDIA \
                         "\"vlc /home/user/media/ClassicFMMP3.m3u\""
                 ;;
 
@@ -422,7 +425,7 @@ function launcher_main () {
             # apps for specific vms
             congy)
                 safe_execute_vm $__CONGY \
-                    qvm-run $__qvm_run_options congy5 "gnome-terminal"
+                    qvm-run $__qvm_run_options $__CONGY "gnome-terminal"
                 ;;
 
             hangouts)
@@ -436,7 +439,7 @@ function launcher_main () {
                 safe_execute_vm gpg \
                     qvm-run \
                     $__qvm_run_options \
-                    gpg \
+                    $__GPG \
                     "\"gnome-terminal --geometry=115x10 -e 'bash -c \\\"grep -i insperity $_loginfile;bash\\\" '\""
                 ;;
 
@@ -451,13 +454,13 @@ function launcher_main () {
                 ;;
             kodi)
                 safe_execute_vm media \
-                    qvm-run $__qvm_run_options media "kodi"
+                    qvm-run $__qvm_run_options $__MEDIA "kodi"
                 ;;
                 
             scan)
                 safe_execute qvm-run \
                     $__qvm_run_options \
-                    --dispvm=printer-dvm \
+                    --dispvm=$__PRINTERDVM \
                     "xterm -e scanBro"
                 ;;
             vpn-ro)
@@ -471,7 +474,7 @@ function launcher_main () {
             ping)
                 qvm-run \
                     $__qvm_run_options \
-                    sys-firewall \
+                    $__FIREWALL \
                     'xterm -e ping google.com'
                 ;;
             shutdown)
@@ -479,13 +482,13 @@ function launcher_main () {
                 ;;
             startup)
                 safe_execute_vm $__CONGY \
-                    qvm-run $__qvm_run_options congy5 "gnome-terminal"
+                    qvm-run $__qvm_run_options $__CONGY "gnome-terminal"
                 sleep 1
                 safe_execute_vm $__CONGY \
-                    qvm-run $__qvm_run_options congy5 "teams"
+                    qvm-run $__qvm_run_options $__CONGY "teams"
                 sleep 1
                 safe_execute_vm $__CONGY \
-                    qvm-run $__qvm_run_options congy5 "/home/user/startup"
+                    qvm-run $__qvm_run_options $__CONGY "/home/user/startup"
                 sleep 3
                 safe_execute \
                     thunderbird_local
