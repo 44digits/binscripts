@@ -283,7 +283,7 @@ function qube_install_software () {
 function disk_busy () {
     # check if hard disk is under load
     #   return 1 or 0
-    declare _diskthreshold=10000
+    declare _diskthreshold=1000
     declare _sum_diff
     declare _diff_data=()
     declare _raw_disk_data
@@ -326,7 +326,7 @@ function wait_disk_ready () {
     while true; do 
         _DISKCHECKS=0
 
-        for i in {1..4}; do 
+        for i in {1..3}; do 
             # _seconds=$(awk 'BEGIN{srand(); print rand() *2 }')
             sleep $_seconds
             _DISKCHECKS=$(( $_DISKCHECKS + $(disk_busy) ))
