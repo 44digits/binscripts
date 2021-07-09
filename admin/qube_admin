@@ -531,6 +531,8 @@ function build_congy_template () {
 
     notify 2 "--create_congy_template: $_vm"
 
+    config_template_firefox $_vm
+
     for _f in \
         teams \
         slack ;
