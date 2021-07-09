@@ -90,7 +90,14 @@ function main () {
     notify "Qube Restore starting..."
 
     for _tmpvm in "$@"; do
+        if [[ "congy88" = "$_tmpvm" ]]; then
+            _vm="congy5"
+        else
+            _vm=${_tmpvm:0:-2}
+        fi
+
         _vm=${_tmpvm:0:-2}
+
         notify "-- $_vm: starting restore"
         
         _deviceid=$(attach_device $_tmpvm $_backupdevice $_mountpoint)
