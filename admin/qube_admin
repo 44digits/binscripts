@@ -276,60 +276,63 @@ function appvm_install_additions () {
 
     notify 2 "--appvm_install_additions: $_appvm"
     case $_appvm in
-        congy88)
+        congy)
             build_congy_appvm $_appvm
             ;;
-        dev88)
+        dev)
             build_dev_appvm $_appvm
             ;;
-        study88)
+        study)
             build_dev_appvm $_appvm
             ;;
-        email88)
+        email)
             build_email_appvm $_appvm
             ;;
-        epub88)
+        epub)
             build_epub_appvm $_appvm
             ;;
-        fedora-dvm88)
+        fedora-dvm)
             build_fedoradvm_dvm $_appvm
             ;;
-        files88)
+        fedora-dvm-big)
+            build_fedoradvm_dvm $_appvm
+            ;;
+        files)
             build_files_appvm $_appvm
             ;;
-        fin88)
+        fin)
             build_fin_appvm $_appvm
             ;;
-        gpg88)
+        gpg)
             build_gpg_appvm $_appvm
             ;;
-        media88)
+        media)
             build_media_appvm $_appvm
             ;;
-        printer-dvm88)
+        printer-dvm)
             build_printer_dvm $_appvm
             ;;
-        sys-vpn-ca88)
+        sys-vpn-ca)
             build_vpnca $_appvm
             ;;
-        sys-vpn-ro88)
+        sys-vpn-ro)
             build_vpnro $_appvm
             ;;
-        usb88)
+        usb)
             ;;
-        vpn-dvm88)
+        vpn-dvm)
             build_vpn_dvm $_appvm
             ;;
-        vpn-dvm-big88)
+        vpn-dvm-big)
             build_vpn_dvm $_appvm
             ;;
-        work88)
+        work)
             build_work_appvm $_appvm
             ;;
-        plus-dvm88)
+        plus-dvm)
             build_plus_dvm $_appvm
             ;;
-        zoom88)
+        zoom)
             ;;
         *)
             echo "ERROR: appvm_install_additions: unknown vm $_appvm"
@@ -1420,38 +1423,39 @@ declare -A VM_CONFIG
 VM_TEMPLATE_NAMES=( 
     [debian]="$_MASTER_DEBIAN_TEMPLATE:"
     [fedora]="$_MASTER_FEDORA_TEMPLATE:"
-    [congy]="$_MASTER_DEBIAN_TEMPLATE:congy77"
-    [dev]="$_MASTER_DEBIAN_TEMPLATE:dev77"
-    [dvm]="$_MASTER_FEDORA_TEMPLATE:dvm77"
-    [media]="$_MASTER_DEBIAN_TEMPLATE:media77"
-    [min]="$_MASTER_DEBIAN_TEMPLATE:min77"
-    [plus]="$_MASTER_DEBIAN_TEMPLATE:plus77"
-    [printer]="$_MASTER_DEBIAN_TEMPLATE:printer77"
-    [usb]="$_MASTER_FEDORA_TEMPLATE:usb77"
-    [vpn]="$_MASTER_FEDORA_TEMPLATE:vpn77"
-    #[zoom]="$_MASTER_DEBIAN_TEMPLATE:zoom77"
+    [congy]="$_MASTER_DEBIAN_TEMPLATE:congy"
+    [dev]="$_MASTER_DEBIAN_TEMPLATE:dev"
+    [dvm]="$_MASTER_FEDORA_TEMPLATE:dvm"
+    [media]="$_MASTER_DEBIAN_TEMPLATE:media"
+    [min]="$_MASTER_DEBIAN_TEMPLATE:min"
+    [plus]="$_MASTER_DEBIAN_TEMPLATE:plus"
+    [printer]="$_MASTER_DEBIAN_TEMPLATE:printer"
+    [usb]="$_MASTER_FEDORA_TEMPLATE:usb"
+    [vpn]="$_MASTER_FEDORA_TEMPLATE:vpn"
+    #[zoom]="$_MASTER_DEBIAN_TEMPLATE:zoom"
 )
 
 
 VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
-    [congy88]="AppVM;${VM_TEMPLATE_NAMES[congy]};orange;0;4000;x;4;sys-firewall;0"
-    [dev88]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;x;0"
-    [email88]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;2000;600;15000;2;sys-firewall;0"
-    [files88]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;800;400;150000;1;x;0"
-    [fin88]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;1024;400;x;1;x;0"
-    [gpg88]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;800;400;x;1;x;0"
-    [epub88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;2000;500;50000;1;x;0"
-    [work88]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;x;2;x;0"
-    [plus-dvm88]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;2000;600;x;2;sys-firewall;1"
-    [vpn-dvm88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;9216;2;sys-vpn-ro88;1"
-    [vpn-dvm-big88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;28672;2;sys-vpn-ro88;1"
-    [fedora-dvm88]="AppVM;${VM_TEMPLATE_NAMES[dvm]};red;2000;600;x;2;sys-firewall;1"
-    #[sys-vpn-ca88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};orange;500;400;x;1;sys-net;0"
-    [sys-vpn-ro88]="AppVM;${VM_TEMPLATE_NAMES[vpn]};orange;500;400;x;1;sys-net;0"
-    [media88]="AppVM;${VM_TEMPLATE_NAMES[media]};green;8192;1024;30720;2;sys-firewall;0"
-    [printer-dvm88]="AppVM;${VM_TEMPLATE_NAMES[printer]};red;974;350;x;1;sys-firewall;1"
-    #[usb88]="AppVM;${VM_TEMPLATE_NAMES[usb]};orange;4000;2000;22528;3;sys-firewall;0"
-    #[zoom88]="AppVM;${VM_TEMPLATE_NAMES[zoom]};orange;4000;400;x;3;sys-firewall;1"
+    [congy]="AppVM;${VM_TEMPLATE_NAMES[congy]};orange;0;4000;x;4;sys-firewall;0"
+    [dev]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;x;0"
+    [email]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;2000;600;15000;2;sys-firewall;0"
+    [files]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;800;400;150000;1;x;0"
+    [fin]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;1024;400;x;1;x;0"
+    [gpg]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;800;400;x;1;x;0"
+    [epub]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;2000;500;50000;1;x;0"
+    [work]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;x;2;x;0"
+    [plus-dvm]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;2000;600;x;2;sys-firewall;1"
+    [vpn-dvm]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;9216;2;sys-vpn-ro;1"
+    [vpn-dvm-big]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;28672;2;sys-vpn-ro;1"
+    [fedora-dvm]="AppVM;${VM_TEMPLATE_NAMES[dvm]};red;2000;600;x;2;sys-firewall;1"
+    [fedora-dvm-big]="AppVM;${VM_TEMPLATE_NAMES[dvm]};red;2000;600;10000;2;sys-firewall;1"
+    #[sys-vpn-ca]="AppVM;${VM_TEMPLATE_NAMES[vpn]};orange;500;400;x;1;sys-net;0"
+    [sys-vpn-ro]="AppVM;${VM_TEMPLATE_NAMES[vpn]};orange;500;400;x;1;sys-net;0"
+    [media]="AppVM;${VM_TEMPLATE_NAMES[media]};green;8192;1024;30720;2;sys-firewall;0"
+    [printer-dvm]="AppVM;${VM_TEMPLATE_NAMES[printer]};red;974;350;x;1;sys-firewall;1"
+    #[usb]="AppVM;${VM_TEMPLATE_NAMES[usb]};orange;4000;2000;22528;3;sys-firewall;0"
+    #[zoom]="AppVM;${VM_TEMPLATE_NAMES[zoom]};orange;4000;400;x;3;sys-firewall;1"
     )
 
 VM_SOFT=( 
