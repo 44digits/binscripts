@@ -89,18 +89,18 @@ function main () {
 
     notify "Qube Restore starting..."
 
-    for _tmpvm in "$@"; do
-        if [[ "congy88" = "$_tmpvm" ]]; then
-            _vm="congy5"
-        else
-            _vm=${_tmpvm:0:-2}
-        fi
+    for _vm in "$@"; do
+        # if [[ "congy88" = "$_tmpvm" ]]; then
+        #     _vm="congy5"
+        # else
+        #     _vm=${_tmpvm:0:-2}
+        # fi
 
-        _vm=${_tmpvm:0:-2}
+        # _vm=${_tmpvm:0:-2}
 
         notify "-- $_vm: starting restore"
         
-        _deviceid=$(attach_device $_tmpvm $_backupdevice $_mountpoint)
+        _deviceid=$(attach_device $_vm $_backupdevice $_mountpoint)
 
         _cmd=$(tr -s [:space:] ' ' <<EOF
             rsync
@@ -116,10 +116,10 @@ function main () {
                 /home/user/
 EOF
             )
-        qvm-run $__qvm_run_options $_tmpvm "$_cmd"
+        qvm-run $__qvm_run_options $_vm "$_cmd"
 
-        detach_device $_tmpvm $_backupdevice $_mountpoint
-        notify "-- $_tmpvm: finished backup"
+        detach_device $_vm $_backupdevice $_mountpoint
+        notify "-- $_vm: finished backup"
     done
 
     notify "...Qube Backup finished"
