@@ -55,7 +55,7 @@ read -r -d '' _filelist <<EOF
     qubes_functions
     qube_backup
     qube_restore
-    config/congy/vpn.config.secret
+    qube_launcher
 EOF
 
 for _f in $_filelist; do
