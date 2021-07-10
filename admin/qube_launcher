@@ -11,23 +11,23 @@ source $(dirname "$0")/qubes_functions
 __DIALOGHEIGHT=770
 __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
     ..............................
-    fedora-32-dvm88
-    media-dvm88
-    plus-dvm88
-    printer-dvm88
+    fedora-32-dvm
+    media-dvm
+    plus-dvm
+    printer-dvm
     ..............................
-    congy88
+    congy
     dev
-    email88
-    files88
-    fin88
-    gpg88
-    media88
+    email
+    files
+    fin
+    gpg
+    media
     study
     tex
     transfer
     usb03
-    work88
+    work
     zoom-conference
 EOF
 )
@@ -72,16 +72,16 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
 EOF
 )
 
-declare __DVM=fedora-dvm88
-declare __PLUSDVM=plus-dvm88
-declare __VPNDVM=vpn-dvm88
-declare __VPN_NETWORK=sys-vpn-ro88
-declare __CONGY=congy88
-declare __EMAIL=email88
-declare __EPUB=epub88
-declare __MEDIA=media88
-declare __PRINTERDVM=printer-dvm88
-declare __GPG=gpg88
+declare __DVM=fedora-dvm
+declare __PLUSDVM=plus-dvm
+declare __VPNDVM=vpn-dvm
+declare __VPN_NETWORK=sys-vpn-ro
+declare __CONGY=congy
+declare __EMAIL=email
+declare __EPUB=epub
+declare __MEDIA=media
+declare __PRINTERDVM=printer-dvm
+declare __GPG=gpg
 declare __FIREWALL=sys-firewall
 declare __qvm_run_options="-vp --color-stderr=37"
 declare __lockme=/tmp/launcher.lock
