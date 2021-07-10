@@ -1,36 +1,69 @@
+#!/bin/bash
+
+# qube_make_win
+#
+# Date: 2021.07.09
+# Author: Andrew Ross
+#
+# https://github.com/Qubes-Community/Contents/blob/master/docs/os/windows/windows-vm.md
+
+
+declare WINVMNAME=win10
+declare WINISO="disp6554:/home/user/Downloads/Win10_21H1_English_x64.iso"
+
+declare __notifylevel=2
+
+source $(dirname "$0")/qubes_functions
+set -e
+
 
 function make_win_vm () {
-    WINVMNAME=win7
-    WINCD=/home/user/iso/win7.iso
     # https://www.qubes-os.org/doc/windows-vm/#qubes-40---windows-vm-installation
 
-    qvm-create --class StandaloneVM \
-        --label red \
+    qvm-create \
+        --class StandaloneVM \
+        --label yellow \
+        --property vcpus=4 \
         --property virt_mode=hvm \
         $WINVMNAME
-    qvm-prefs $WINVMNAME memory 8192
-    qvm-prefs $WINVMNAME maxmem 8192
+    qvm-prefs $WINVMNAME memory 6144
+    qvm-prefs $WINVMNAME maxmem 6144
     qvm-prefs $WINVMNAME kernel ''
-    qvm-volume extend $WINVMNAME:root 25g
+    qvm-volume extend $WINVMNAME:root 40g
+    qvm-volume extend $WINVMNAME:private 10g
     qvm-prefs $WINVMNAME debug true
     qvm-features $WINVMNAME video-model cirrus
 
-    qvm-start --cdrom=personal:$WINCD $WINVMNAME
+    echo "Starting $WINVMNAME"
+    qvm-start --cdrom=$WINISO $WINVMNAME
 
-    echo "make_win_vm: Windows VM started... waiting"
+    # restart after first part of installation
+    echo "Restart $WINVMNAME for 2nd part of installation"
     read X
 
-    qvm-clone $WINVMNAME win7-backinstalled
+    qvm-start $WINVMNAME
+
+    echo "Shutdown for final VM setup"
+    read X
 
     qvm-features --unset $WINVMNAME video-model
     qvm-prefs $WINVMNAME qrexec_timeout 300
-
-    #Install qubes tools:
-    sudo qubes-dom0-update qubes-windows-tools
-    qvm-start $WINVMNAME --install-windows-tools
-
-    echo "make_win_vm: Windows VM installing qubes tools... waiting"
-    read X
-
     qvm-prefs -s $WINVMNAME debug false
 }
+
+
+
+function main () {
+    echo "Creating Windows VM:"
+    echo "  $WINVMNAME"
+    echo "  $WINISO"
+
+    make_win_vm
+
+}
+
+
+main "$@"
+
+
+
