@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# vinelandconnect
+# create ssh tunnel for remote desktop
+# 2015.12.28
+
+# import
+# _remoteport
+# _user
+declare _mydir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+source $_mydir/$(basename "$0").secrets
+declare _ip
+declare _vncport=5900
+
+echo
+echo "vinelandConnect"
+echo -n "  enter ip: "
+read _ip
+
+ssh -p $_remoteport "$_user@$_ip" -L "$_vncport:localhost:$_vncport"
+
