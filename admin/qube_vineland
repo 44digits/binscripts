@@ -10,7 +10,7 @@
 declare _VINELANDCONFIGDIR="$(dirname "${BASH_SOURCE[0]}")/utilities/vineland"
 declare _SOFTWARELIST="remmina"
 declare _REMMINACONFIGDIR="/home/user/.local/share/remmina"
-declare _DVM=fedora-30-dvm
+declare _DVM=fedora-dvm
 
 source $(dirname "$0")/qubes_functions
 
@@ -47,10 +47,10 @@ function main () {
         chmod +x /home/user/vineland_connect
 EOF
 )
+    qube_run_commands $_disp "user" "$_commands"
+
     qvm-run $_disp "remmina" >/dev/null 2>&1 &
     qvm-run $_disp "gnome-terminal -e /home/user/vineland_connect" >/dev/null 2>&1 &
-
-    qube_run_commands $_disp "user" "$_commands"
 
 }
 
