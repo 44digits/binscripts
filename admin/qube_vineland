@@ -47,10 +47,12 @@ function main () {
         chmod +x /home/user/vineland_connect
 EOF
 )
+
+    qube_run_commands $_disp "user" "$_commands"
+
     qvm-run $_disp "remmina" >/dev/null 2>&1 &
     qvm-run $_disp "gnome-terminal -e /home/user/vineland_connect" >/dev/null 2>&1 &
 
-    qube_run_commands $_disp "user" "$_commands"
 
 }
 
