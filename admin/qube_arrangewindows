@@ -100,7 +100,7 @@ if [[ ! -z $vpn_qube ]]; then
     win_id=$(get_windowid_wmctrl "$vpn_qube:deluge")
     set_window_geom $win_id 1680 180 1100 500 2 0
 
-    win_id=$(get_windowid_wmctrl "$vpn_qube:nautilus")
+    win_id=$(get_windowid_wmctrl "$vpn_qube:org.gnome.Nautilus")
     set_window_geom $win_id 1894 30 900 600 2 0
 
     win_id=$(get_windowid_wmctrl "$vpn_qube:Navigator")
