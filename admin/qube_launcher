@@ -11,7 +11,7 @@ source $(dirname "$0")/qubes_functions
 __DIALOGHEIGHT=770
 __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
     ..............................
-    fedora-32-dvm
+    fedora-dvm
     media-dvm
     plus-dvm
     printer-dvm
