@@ -54,7 +54,7 @@ pref("datareporting.sessions.current.clean", true);
 pref("devtools.onboarding.telemetry.logged", false);
 pref("dom.battery.enabled", false);
 pref("dom.disable_open_during_load", false); //enable popups
-pref("dom.event.contextmenu.enabled", false);
+#pref("dom.event.contextmenu.enabled", false); //enable hijacking right click
 pref("extensions.pocket.api", "");
 pref("extensions.pocket.enabled", false);
 pref("extensions.pocket.oAuthConsumerKey", "");
