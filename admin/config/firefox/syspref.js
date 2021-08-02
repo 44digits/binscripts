@@ -9,7 +9,9 @@
 
 //pref("dom.event.clipboardevents.enabled", false);
 //pref("places.history.enabled", false);
+//pref("dom.event.contextmenu.enabled", false); //enable hijacking right click
 
+pref("app.normandy.enabled", false);
 pref("browser.aboutHomeSnippets.updateUrL", "");
 pref("browser.newtabpage.activity-stream.feeds.section.highlights", false);
 pref("browser.newtabpage.activity-stream.feeds.section.topstories", false);
@@ -54,7 +56,6 @@ pref("datareporting.sessions.current.clean", true);
 pref("devtools.onboarding.telemetry.logged", false);
 pref("dom.battery.enabled", false);
 pref("dom.disable_open_during_load", false); //enable popups
-#pref("dom.event.contextmenu.enabled", false); //enable hijacking right click
 pref("extensions.pocket.api", "");
 pref("extensions.pocket.enabled", false);
 pref("extensions.pocket.oAuthConsumerKey", "");
@@ -100,4 +101,3 @@ pref("toolkit.telemetry.reportingpolicy.firstRun", false);
 pref("toolkit.telemetry.shutdownPingSender.enabled", false);
 pref("toolkit.telemetry.unified", false);
 pref("toolkit.telemetry.updatePing.enabled", false);
-
