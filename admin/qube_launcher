@@ -388,7 +388,16 @@ function launcher_main () {
                         "\"vlc /home/user/media/ClassicFMMP3.m3u\""
                 ;;
 
-            chromium | firefox | gedit | nautilus | xterm | gnome-terminal)
+            chromium)
+                declare _vm=$(get_vmname)
+
+                if [[ "$_vm" ]]; then 
+                    safe_execute \
+                        qvm_chrome $_vm
+                fi
+                ;;
+
+            firefox | gedit | nautilus | xterm | gnome-terminal)
                 declare _vm=$(get_vmname)
 
                 if [[ "$_vm" ]]; then 
