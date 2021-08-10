@@ -157,7 +157,7 @@ function firefox_work () {
     declare _urls=$(tr -s [:space:] ' ' <<EOF
         http://workflowy.com/login/
         https://trello.com/login
-        https://events.hackster.io/xcellent
+        https://www.commafeed.com
 EOF
     )
     qvm_firefox $__DVM "$_urls" &
