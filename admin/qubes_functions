@@ -73,6 +73,7 @@ EOF
 
 
 function qube_get_disposable_vm () {
+    notify 2 "qube_get_disposable_vm starting... $1"
     declare _disp_template=$1
     declare _disp_list_pre=$(qvm-ls --raw-list --running | grep disp)
     declare _disp_list_post
@@ -80,9 +81,13 @@ function qube_get_disposable_vm () {
     declare _disp_count_final=$(( $_disp_count_current +1 ))
     declare _disp_vm
 
+    notify 2 "qube_get_disposable_vm step 2... $1"
+
     qvm-run --dispvm=$_disp_template "xterm" >/dev/null 2>&1 &
 
     while [[ $_disp_count_current != $_disp_count_final ]]; do
+        
+        notify 2 "qube_get_disposable_vm loop "
         sleep 2
         _disp_count_current=$(qvm-ls --raw-list --running \
             | grep disp \
@@ -254,12 +259,6 @@ function qube_install_software () {
     _ostype=$( qube_get_distribution $_vm )
     notify 2 "qube_install_software: vm:$_vm ostype:$_ostype software:$_software"
 
-    ##### temporary #####
-    if [ -n "$SKIPIT" ]; then
-        return 0
-    fi
-
-
     # software list delineated by '&'
     declare _softwarelist=$(echo $_software | tr '&' ' ')
 
@@ -339,3 +338,66 @@ function wait_disk_ready () {
 }
 
  
+
+
+function get_attached_deviceid () {
+    declare _vm=$1
+    declare _deviceid
+    _deviceid=$(qvm-run $__qvm_run_options $_vm "lsblk | tac | grep -m 1 . | cut -d' ' -f 1")
+
+    notify 2 "get_deviceid: $_deviceid"
+    echo "$_deviceid"
+}
+
+
+
+function attach_device () {
+    declare _vm=$1
+    declare _device=$2
+    declare _mountpoint=$3
+    declare _deviceid
+
+    notify 2 "attach_device: qvm-device block attach $_vm $_device (on $_mountpoint)"
+    # perform run action to wake up qube
+    qube_run_commands $_vm "root" "mkdir -p $_mountpoint"
+
+    qvm-device block attach $_vm $_device
+    _deviceid=$(get_attached_deviceid $_vm)
+    _commands=$(cat <<EOF
+        chmod a+rwx $_mountpoint
+        mount -o sync /dev/$_deviceid $_mountpoint
+EOF
+)
+    qube_run_commands $_disp "root" "$_commands"
+
+    declare _mounted=$(qvm-run $__qvm_run_options $_vm "grep $_mountpoint /proc/mounts")
+    if [[ -z $_mounted ]]; then
+        notify 1 "ERROR: attach_device /dev/$_deviceid not mounted"
+        exit 1
+    else
+        notify 2 "attach_device: /dev/$_deviceid"
+        echo "/dev/$_deviceid"
+    fi
+}
+
+
+
+function detach_device () {
+    declare _vm=$1
+    declare _device=$2
+    declare _mountpoint=$3
+    declare _xx
+
+    qvm-run $__qvm_run_options $_vm "sync"
+    qube_run_commands $_vm "user" "sync"
+    sleep 2
+    qube_run_commands $_vm "user" "sync"
+
+    qube_run_commands $_vm "root" "umount $_mountpoint"
+    sleep 2
+    qvm-device block detach $_vm $_device
+    notify 2 "detach_device: $_vm $_device"
+}
+
+
+
