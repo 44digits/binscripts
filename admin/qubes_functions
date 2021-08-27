@@ -213,13 +213,6 @@ function qube_update () {
     _ostype=$( qube_get_distribution $_vm )
     notify 2 "qube_update: vm:$_vm ($_ostype)"
 
-
-    ##### temporary #####
-    if [ -n "$SKIPIT" ]; then
-        return 0
-    fi
-
-
     case $_ostype in
         "debian")
             _commands=$(cat <<EOF
