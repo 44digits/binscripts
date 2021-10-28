@@ -101,6 +101,7 @@ function update_all_templates () {
 
         qube_update $_templatename
         qube_install_software $_templatename $_softwarelist
+        qvm-shutdown --wait $_templatename
     done
 
 }
@@ -1124,7 +1125,7 @@ EOF
 		"root" \
 		/rw/config/qubes-firewall-user-script \
         "$_text"
-
+        
     _text=$(cat <<EOF
 #!/bin/bash
 VPN_CLIENT='openvpn'
@@ -1167,10 +1168,16 @@ function build_vpn_dvm () {
     notify 2 "--netvm: $_netvm"
     qvm-prefs $_vm netvm ""
 
+    config_user $_vm
+    config_template_firefox $_vm
+
     _text=$(cat <<EOF
 #!/bin/bash
 
-firefox &
+firefox \
+     "https://www.iplocation.net/" \
+     "https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/" \
+     "https://addons.mozilla.org/en-US/firefox/addon/privacy-badger17/" &
 nautilus &
 deluge &
 
@@ -1448,8 +1455,8 @@ VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
     [plus-dvm]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;2000;600;x;2;sys-firewall;1"
     [vpn-dvm]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;9216;2;sys-vpn-ro;1"
     [vpn-dvm-big]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;28672;2;sys-vpn-ro;1"
-    [fedora-dvm]="AppVM;${VM_TEMPLATE_NAMES[dvm]};red;2000;600;x;2;sys-firewall;1"
-    [fedora-dvm-big]="AppVM;${VM_TEMPLATE_NAMES[dvm]};red;2000;600;10000;2;sys-firewall;1"
+    [fedora-dvm]="AppVM;${VM_TEMPLATE_NAMES[dvm]};red;2000;600;x;2;sys-vpn-ro;1"
+    [fedora-dvm-big]="AppVM;${VM_TEMPLATE_NAMES[dvm]};red;2000;600;10000;2;sys-vpn-ro;1"
     #[sys-vpn-ca]="AppVM;${VM_TEMPLATE_NAMES[vpn]};orange;500;400;x;1;sys-net;0"
     [sys-vpn-ro]="AppVM;${VM_TEMPLATE_NAMES[vpn]};orange;500;400;x;1;sys-net;0"
     [media]="AppVM;${VM_TEMPLATE_NAMES[media]};green;8192;1024;30720;2;sys-firewall;0"
@@ -1462,9 +1469,11 @@ VM_SOFT=(
     [plus]=$(tr -s [:space:] '&' <<EOF
         audacity
         calibre
+        cheese
         chromium
         curl
         eog
+        ffmpeg
         gimp
         git
         gnucash
@@ -1487,6 +1496,7 @@ VM_SOFT=(
         texlive-latex-extra 
         texlive-latex-recommended 
         tmux
+        vim-gtk
         vlc
         xournal
         xsane
