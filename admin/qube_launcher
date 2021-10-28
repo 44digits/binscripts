@@ -19,6 +19,7 @@ __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
     congy
     dev
     email
+    epub
     files
     fin
     gpg
