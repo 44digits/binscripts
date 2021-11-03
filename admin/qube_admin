@@ -1473,6 +1473,7 @@ VM_SOFT=(
         chromium
         curl
         eog
+        exiftool
         ffmpeg
         gimp
         git
