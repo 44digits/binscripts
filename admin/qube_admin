@@ -811,12 +811,21 @@ function build_min_appvm () {
 
 function build_plus_template () {
     declare _vm=$1
+    declare _commands
+    declare _im_policy=/etc/ImageMagick-6/policy.xml 
 
     config_template_firefox $_vm
+    _commands=$(cat <<EOF
+        sed -i 's/\(.*"PDF".*\)/<!-- \1 -->/' $_im_policy
+EOF
+)
+    qube_run_commands $_vm "root" "$_commands"
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
 }
+
+
 
 function build_epub_appvm () {
     declare _vm=$1
@@ -911,22 +920,10 @@ function build_printer_template () {
     _commands=$(cat <<EOF
         gunzip /home/user/QubesIncoming/dom0/$_print_tgz
         bash /home/user/QubesIncoming/dom0/$_print_sh
-        sed -i '/<\/policymap>/d' $_im_policy
+        sed -i 's/\(.*"PDF".*\)/<!-- \1 -->/' $_im_policy
 EOF
 )
     qube_run_commands $_vm "root" "$_commands"
-
-    _commands=$(cat <<EOF
-  <policy domain="coder" rights="read|write" pattern="PDF" />
-</policymap>
-
-EOF
-)
-    qube_append_file \
-        $_vm \
-        "root" \
-        "$_im_policy" \
-        "$_commands"
 
     qvm-prefs $_vm netvm ""
     qube_remove_incomming $_vm
