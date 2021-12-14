@@ -1485,6 +1485,7 @@ VM_SOFT=(
         librecad
         libreoffice
         nautilus
+        pdfarranger
         pdftk
         python3-pip
         remmina
