@@ -62,6 +62,7 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
     nautilus
     postTrello
     thunder
+    win10start
     xterm
     ..............................
     scan
@@ -157,6 +158,8 @@ EOF
 function firefox_work () {
     declare _urls=$(tr -s [:space:] ' ' <<EOF
         http://workflowy.com/login/
+        https://www.notion.so/login
+        https://evernote.com/Login.action
         https://trello.com/login
         https://www.commafeed.com
 EOF
@@ -221,6 +224,16 @@ EOF
             $_destqube \
             $_f
     done
+}
+
+
+
+function win10_start () {
+    qvm-run \
+        $__qvm_run_options \
+        -u root sys-firewall \
+        "iptables -I FORWARD 2 -s 10.137.0.0/24 -d 10.137.0.35 -j ACCEPT"
+    qvm-start win10-esri2
 }
 
 
@@ -325,7 +338,7 @@ function launcher_main () {
         case $_app_selected in
             # web bookmarks
            '<pass>')
-                declare _loginfile="logins_2021"
+                declare _loginfile="logins_2022"
                 declare _passstring=$(zenity_fix \
                     --entry \
                     --title="Pass:")
@@ -445,7 +458,7 @@ function launcher_main () {
 
             insperity)
                 safe_execute qvm_firefox $__DVM https://insperity.com
-                declare _loginfile="logins_2021"
+                declare _loginfile="logins_2022"
                 safe_execute_vm gpg \
                     qvm-run \
                     $__qvm_run_options \
@@ -486,6 +499,9 @@ function launcher_main () {
                     $__qvm_run_options \
                     $__FIREWALL \
                     'xterm -e ping google.com'
+                ;;
+            win10start)
+                win10_start
                 ;;
             shutdown)
                 qube_shutdown
