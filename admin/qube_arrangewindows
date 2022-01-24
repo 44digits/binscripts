@@ -66,6 +66,10 @@ set_window_geom $win_id 100 170 1000 852 0 1
 win_id=$(get_windowid_xdotool "workflowy")
 set_window_geom $win_id 773 30 900 850 0 0
 
+# vlc
+win_id=$(get_windowid_wmctrl "vlc")
+set_window_geom $win_id 1183 600 489 355 0 1
+
 # congy terminal
 win_id=$(get_windowid_wmctrl "congy:gnome-terminal")
 set_window_geom $win_id 938 30 734 459 1 0
