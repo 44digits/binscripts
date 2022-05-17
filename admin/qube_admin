@@ -119,8 +119,6 @@ function update_all_templates () {
 }
 
 
-
-
 function create_template () {
     declare _templateconfig=$1
     declare _software=$2
@@ -559,8 +557,6 @@ function build_zoom_appvm () {
         $_vm \
         $_USB00 \
         --persistent 
-
-    #    -o no-strict-reset=True
 }
 
 
@@ -623,13 +619,11 @@ function build_congy_appvm () {
     declare _vm=$1
     declare _bashlines
     declare _commands
-    #declare _usb01="dom0:00_1d.0"
 
     qvm-prefs $_vm virt_mode hvm 
 
     config_user $_vm
     config_user_firefox $_vm
-
 
     _commands=$(cat <<EOF
         mkdir -p /rw/config/qubes-bind-dirs.d
@@ -720,7 +714,6 @@ function build_fedoradisp_disp  () {
     qvm-shutdown --wait $_vm
     qvm-features $_vm appmenus-dispvm 1
 }
-
 
 
 function build_media_template () {
@@ -845,7 +838,6 @@ function build_min_appvm () {
 }
 
 
-
 function build_plus_template () {
     declare _vm=$1
 
@@ -854,6 +846,7 @@ function build_plus_template () {
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
 }
+
 
 function build_epub_appvm () {
     declare _vm=$1
@@ -877,6 +870,7 @@ function build_epub_appvm () {
     qvm-shutdown --wait $_vm
 }
 
+
 function build_work_appvm () {
     declare _vm=$1
 
@@ -898,6 +892,7 @@ function build_work_appvm () {
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
 }
+
 
 function build_plus_disp () {
     declare _vm=$1
@@ -921,7 +916,6 @@ function build_plus_disp () {
     qvm-shutdown --wait $_vm
     qvm-features $_vm appmenus-dispvm 1
 }
-
 
 
 function build_printer_template () {
@@ -970,6 +964,7 @@ EOF
     qvm-shutdown --wait $_vm 
 }
 
+
 function build_printer_disp () {
     declare _vm=$1
 
@@ -993,7 +988,6 @@ function build_printer_disp () {
     qvm-shutdown --wait $_vm
     qvm-features $_vm appmenus-dispvm 1
 }
-
 
 
 function build_usb_template () {
