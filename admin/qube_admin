@@ -65,11 +65,20 @@ function template_name () {
     declare _name_parts 
 
     _name_parts=(${_templateconfig//:/ })
-    if [ "${#_name_parts[@]}" -eq "2" ]; then
-        echo "${_name_parts[0]}-${_name_parts[1]}"
-    else
+    if [ -z "${_name_parts[1]}" ]; then
         echo "${_name_parts[0]}"
+    else
+        echo "${_name_parts[0]}-${_name_parts[1]}"
     fi
+}
+
+
+function template_size () {
+    declare _templateconfig=$1
+    declare _name_parts 
+
+    _name_parts=(${_templateconfig//:/ })
+    echo "${_name_parts[2]}"
 }
 
 
@@ -117,6 +126,7 @@ function create_template () {
     declare _software=$2
     declare _master=$(template_master $_templateconfig)
     declare _template=$(template_name $_templateconfig)
+    declare _template_size=$(template_size $_templateconfig)
 
     notify 1 "--create_template : _template:$_template, _software:$_software"
     
@@ -127,6 +137,9 @@ function create_template () {
     else
         notify 2 "--create_template : creating _template:$_template"
         qvm-clone $_master $_template
+        if [ -n "$_template_size" ]; then
+            qvm-volume extend $_template:root "${_template_size}GB"
+        fi
         qube_update $_template
         qube_install_software $_template $_software
 
@@ -1432,22 +1445,21 @@ declare -A VM_TEMPLATE_NAMES
 declare -A VM_CONFIG
 
 VM_TEMPLATE_NAMES=( 
-    [debian]="$_MASTER_DEBIAN_TEMPLATE:"
-    [fedora]="$_MASTER_FEDORA_TEMPLATE:"
-    [congy]="$_MASTER_DEBIAN_TEMPLATE:congy"
-    [dev]="$_MASTER_DEBIAN_TEMPLATE:dev"
-    [dvm]="$_MASTER_FEDORA_TEMPLATE:dvm"
-    [media]="$_MASTER_DEBIAN_TEMPLATE:media"
-    [min]="$_MASTER_DEBIAN_TEMPLATE:min"
-    [plus]="$_MASTER_DEBIAN_TEMPLATE:plus"
-    [printer]="$_MASTER_DEBIAN_TEMPLATE:printer"
-    [usb]="$_MASTER_FEDORA_TEMPLATE:usb"
-    [vpn]="$_MASTER_FEDORA_TEMPLATE:vpn"
-    #[zoom]="$_MASTER_DEBIAN_TEMPLATE:zoom"
+    [debian]="$_MASTER_DEBIAN_TEMPLATE::"
+    [fedora]="$_MASTER_FEDORA_TEMPLATE::"
+    [congy]="$_MASTER_DEBIAN_TEMPLATE:congy:"
+    [dev]="$_MASTER_DEBIAN_TEMPLATE:dev:"
+    [disp]="$_MASTER_FEDORA_TEMPLATE:disp:"
+    [media]="$_MASTER_DEBIAN_TEMPLATE:media:"
+    [min]="$_MASTER_DEBIAN_TEMPLATE:min:"
+    [plus]="$_MASTER_DEBIAN_TEMPLATE:plus:15"
+    [printer]="$_MASTER_DEBIAN_TEMPLATE:printer:"
+    #[usb]="$_MASTER_FEDORA_TEMPLATE:usb:"
+    [vpn]="$_MASTER_FEDORA_TEMPLATE:vpn:"
 )
 
 
-VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
+VM_CONFIG=( # "type;template;lable;maxmem;memory;storage;vCPUs;network;disp"
     [congy]="AppVM;${VM_TEMPLATE_NAMES[congy]};orange;0;4000;x;4;sys-firewall;0"
     [dev]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;x;0"
     [email]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;2000;600;15000;2;sys-firewall;0"
