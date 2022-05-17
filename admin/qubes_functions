@@ -35,6 +35,17 @@ function zenity_list () {
 }
 
 
+function wait_qube_startup () {
+    declare _vm=$1
+    delcare _state=$(qube_get_state $_vm)
+
+    while [ "Running" != "$_status" ]; do
+        _state=$(qube_get_state $_vm)
+        sleep 2
+    done
+}
+
+
 function qube_get_state () {
     declare _vm=$1
     declare _state
