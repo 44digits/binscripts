@@ -705,9 +705,11 @@ function build_disp_template () {
     qvm-shutdown --wait $_vm
 }
 
+
 function build_fedoradisp_disp  () {
     declare _vm=$1
-    # nothing to do
+
+    config_user $_vm
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
