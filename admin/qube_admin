@@ -688,11 +688,10 @@ EOF
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
-    qvm-pci attach \
-        $_vm \
-        $_USB01 \
-        --persistent 
-    #    -o no-strict-reset=True
+    #qvm-pci attach \
+    #    $_vm \
+    #    $_USB01 \
+    #    --persistent 
 }
 
 
