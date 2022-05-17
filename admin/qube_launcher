@@ -28,7 +28,6 @@ __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
     study
     tex
     transfer
-    usb03
     work
     zoom
 EOF
@@ -52,22 +51,18 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
     calibre
     chromium
     classicFM
-    congy
     firefox
     gedit
     gnome-terminal
-    hangouts
     hostnames
     insperity
     kodi
     nautilus
-    postTrello
     thunder
     win10start
     xterm
     ..............................
     scan
-    vpn-ro
     vpn
     ping
     shutdown
@@ -468,11 +463,6 @@ function launcher_main () {
             congy)
                 safe_execute_vm $__CONGY \
                     qvm-run $__qvm_run_options $__CONGY "gnome-terminal"
-                ;;
-
-            hangouts)
-                safe_execute_vm usb03 \
-                    qvm_chrome usb03 "https://hangouts.google.com"
                 ;;
 
             insperity)
