@@ -234,6 +234,7 @@ function win10_start () {
         sys-firewall \
         "iptables -I FORWARD 2 -s 10.137.0.0/24 -d 10.137.0.39 -j ACCEPT"
     qvm-start win10-esri
+    wait_qube_startup win10-esri
 }
 
 
@@ -241,6 +242,7 @@ function win10_start () {
 function thunderbird_local () {
     qvm-run -u root $__qvm_run_options $__EMAIL "/home/user/fix_locale"
     qvm-run $__qvm_run_options $__EMAIL "/home/user/thunderbird_timefix"
+    wait_qube_startup $__EMAIL
 }
 
 
@@ -496,12 +498,11 @@ function launcher_main () {
                     --dispvm=$__PRINTERDVM \
                     "xterm -e scanBro"
                 ;;
-            vpn-ro)
-                safe_execute_vm sys-vpn-ro \
-                    qvm-run $__qvm_run_options $__VPN_NETWORK "'xterm -e watch -cd -n 2 ip addr'"
-                ;;
             vpn)
+                qvm-run $__qvm_run_options $__VPN_NETWORK "'xterm -e watch -cd -n 2 ip addr'"
+                wait_qube_startup $__VPN_NETWORK
                 qube_vpn
+                sleep 3
                 ;;
             # system maintenance
             ping)
@@ -517,26 +518,28 @@ function launcher_main () {
                 qube_shutdown
                 ;;
             startup)
-                safe_execute_vm $__CONGY \
-                    qvm-run $__qvm_run_options $__CONGY "gnome-terminal"
-                sleep 1
-                safe_execute_vm $__CONGY \
-                    qvm-run $__qvm_run_options $__CONGY "teams"
-                sleep 1
-                safe_execute_vm $__CONGY \
-                    qvm-run $__qvm_run_options $__CONGY "/home/user/startup"
+                qvm-run $__qvm_run_options $__CONGY "gnome-terminal"
                 sleep 3
-                safe_execute \
-                    thunderbird_local
-                sleep 1
-                safe_execute firefox_plugins
-                safe_execute firefox_work
-                safe_execute_vm media \
-                    qvm-run \
-                        $__qvm_run_options \
-                        $__MEDIA \
-                        "\"vlc /home/user/media/ClassicFMMP3.m3u\""
-                sleep 5
+                qvm-run $__qvm_run_options $__CONGY "teams"
+                sleep 3
+                qvm-run $__qvm_run_options $__CONGY "/home/user/startup"
+                wait_qube_startup $__CONGY 
+                sleep 3
+
+                thunderbird_local
+                sleep 3
+
+                firefox_plugins
+                sleep 3
+                firefox_work
+                sleep 3
+
+                qvm-run \
+                    $__qvm_run_options \
+                    $__MEDIA \
+                    "\"vlc /home/user/media/ClassicFMMP3.m3u\""
+                wait_qube_startup $__MEDIA
+                sleep 3
                 ;;
 
             *)
@@ -544,7 +547,7 @@ function launcher_main () {
 
         esac
     fi
-    sleep 7
+    sleep 3
 }
 
 launcher_main
