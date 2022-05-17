@@ -190,6 +190,8 @@ function qube_write_file () {
 
     notify 2 "qube_write_file: VM:$_vm user:$_user file:$_file"
 
+    #qvm-run $__qvm_run_options -u "$_user" "$_vm" "echo \"\" > $_file"
+    qvm-run $__qvm_run_options -u "$_user" "$_vm" "rm -f $_file"
     qvm-run $__qvm_run_options -u "$_user" "$_vm" "touch $_file"
     qube_append_file $_vm $_user $_file "$_lines"
 }
