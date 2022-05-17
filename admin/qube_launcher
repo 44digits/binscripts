@@ -235,9 +235,10 @@ EOF
 function win10_start () {
     qvm-run \
         $__qvm_run_options \
-        -u root sys-firewall \
-        "iptables -I FORWARD 2 -s 10.137.0.0/24 -d 10.137.0.35 -j ACCEPT"
-    qvm-start win10-esri2
+        -u root \
+        sys-firewall \
+        "iptables -I FORWARD 2 -s 10.137.0.0/24 -d 10.137.0.39 -j ACCEPT"
+    qvm-start win10-esri
 }
 
 
