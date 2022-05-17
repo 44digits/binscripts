@@ -1062,7 +1062,7 @@ function build_vpnro () {
 
 	build_vpn_server $_vm
     qube_remove_incomming $_vm
-    qvm-shutdown --wait $_vm
+    #qvm-shutdown --wait $_vm
 }
 
 function build_vpn_server () {
