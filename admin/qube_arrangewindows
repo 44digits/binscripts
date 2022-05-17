@@ -36,8 +36,8 @@ set_window_geom () {
     declare winid=$1
     declare x=$2
     declare y=$3
-    declare height=$4
-    declare width=$5
+    declare width=$4
+    declare height=$5
     declare workspace=$6
     declare sticky=$7
 
@@ -76,7 +76,7 @@ set_window_geom $win_id 938 30 734 459 1 0
 
 # congy slack
 win_id=$(get_windowid_wmctrl "congy:slack")
-set_window_geom $win_id 0 422 1000 550 1 0
+set_window_geom $win_id 0 200 1300 750 1 0
 
 # congy firefox
 win_id=$(get_windowid_wmctrl "congy:Navigator")
