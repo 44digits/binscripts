@@ -114,6 +114,9 @@ function main () {
                 --filter="- */Trash/*"
                 --filter="- *venv*"
                 --filter="- *.iso"
+                --filter="- .local/lib/*"
+                --filter="- .zoom/*"
+                --filter="- anaconda*"
                 /home/user/
                 /mnt/backup/bak/qubes/$_vm/
 EOF
