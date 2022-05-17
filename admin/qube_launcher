@@ -6,15 +6,16 @@
 #
 # 2020.03.11
 
-source $(dirname "$0")/qubes_functions
+#source $(dirname "$0")/qubes_functions
+source /home/coconut/admin/qubes_functions
 
 __DIALOGHEIGHT=770
 __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
     ..............................
-    fedora-dvm
-    media-dvm
-    plus-dvm
-    printer-dvm
+    fedora-disp
+    media-disp
+    plus-disp
+    printer-disp
     ..............................
     congy
     dev
@@ -74,15 +75,15 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
 EOF
 )
 
-declare __DVM=fedora-dvm
-declare __PLUSDVM=plus-dvm
-declare __VPNDVM=vpn-dvm
+declare __DVM=fedora-disp
+declare __PLUSDVM=plus-disp
+declare __VPNDVM=vpn-disp
 declare __VPN_NETWORK=sys-vpn-ro
 declare __CONGY=congy
 declare __EMAIL=email
 declare __EPUB=epub
 declare __MEDIA=media
-declare __PRINTERDVM=printer-dvm
+declare __PRINTERDVM=printer-disp
 declare __GPG=gpg
 declare __FIREWALL=sys-firewall
 declare __qvm_run_options="-vp --color-stderr=37"
@@ -93,12 +94,13 @@ function get_vmname () {
     declare _vms=$(qvm-ls --raw-list --running --exclude dom0 --all \
         | sort \
         | tr '[[:space:]]' ' ')
-    declare _vm=$(zenity_fix \
-        --height=$__DIALOGHEIGHT \
-        --list \
-        --title="VM" \
-        --column="VM" \
-        $_vms $__DVMS)
+    # declare _vm=$(zenity_fix \
+    #     --height=$__DIALOGHEIGHT \
+    #     --list \
+    #     --title="VM" \
+    #     --column="VM" \
+    #     $_vms $__DVMS)
+    declare _vm=$(zenity_list $_vms $__DVMS)
     echo $_vm
 }
 
@@ -118,7 +120,7 @@ function qvm_firefox () {
     declare _vm="$1"
     declare _url="${@:2}"
 
-    qvm-run \
+    nohup qvm-run \
         $__qvm_run_options \
         --dispvm=$_vm \
         "firefox $_url" &
@@ -197,7 +199,9 @@ function qube_vpn () {
         --dispvm=$__VPNDVM \
         "/home/user/startup"
 
-    zenity_fix --info --title "VPN" --text "Waiting to kill VPN"
+    # zenity_fix --info --title "VPN" --text "Waiting to kill VPN"
+    read -p "Waiting to kill VPN..." _xx
+
     _vpndvm=$(get_vpn_qubename)
 
     notify 2 "qube_vpn found:$_vpndvm"
@@ -327,11 +331,15 @@ function lockit () {
 
 
 function launcher_main () {
-    declare _app_selected=$(zenity_fix \
-        --height=$__DIALOGHEIGHT \
-        --list \
-        --title="Application" \
-        --column="Application" \
+    # declare _app_selected=$(zenity_fix \
+    #     --height=$__DIALOGHEIGHT \
+    #     --list \
+    #     --title="Application" \
+    #     --column="Application" \
+    #     $__APPS)
+
+    clear
+    declare _app_selected=$(zenity_list \
         $__APPS)
 
     if [[ "$_app_selected" ]]; then
@@ -339,9 +347,14 @@ function launcher_main () {
             # web bookmarks
            '<pass>')
                 declare _loginfile="logins_2022"
-                declare _passstring=$(zenity_fix \
-                    --entry \
-                    --title="Pass:")
+
+                # declare _passstring=$(zenity_fix \
+                #     --entry \
+                #     --title="Pass:")
+
+                declare _passstring
+                read -p "Password: " _passstring
+
                 if [[ ! -z "$_passstring" ]]; then
                     safe_execute_vm $__GPG \
                         qvm-run \
@@ -353,18 +366,23 @@ function launcher_main () {
                 ;;
                 
             '<search>')
-                declare _searchstring=$(zenity_fix \
-                    --entry \
-                    --title="Search terms:")
+                # declare _searchstring=$(zenity_fix \
+                #     --entry \
+                #     --title="Search terms:")
+                declare _searchstring
+                read -p "Search terms:" _searchstring
+
                 if [[ ! -z "$_searchstring" ]]; then
                     safe_execute qvm_firefox $__DVM "-search \"$_searchstring\""
                 fi
                 ;;
 
             '<url>')
-                declare _url=$(zenity_fix \
-                    --entry \
-                    --title="URL")
+                # declare _url=$(zenity_fix \
+                #     --entry \
+                #     --title="URL")
+                declare _url
+                read -p "URL: " _url
                 safe_execute qvm_firefox $__DVM "$_url"
                 ;;
 
