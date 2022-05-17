@@ -9,7 +9,7 @@
 
 
 declare WINVMNAME=$(date +'win10-%Y%m%d')
-declare WINISO="files:/home/user/Software/Win10_21H2_English_x64.iso"
+declare WINISO="files:/home/user/Software/win10_20220509.iso"
 declare RAM_SIZE=5120
 declare C_DRIVE_SIZE="80g"
 declare D_DRIVE_SIZE="10g"
