@@ -1571,6 +1571,7 @@ EOF
         curl
         git
         gnucash
+        gvim
         libdbd-sqlite3
         libffi-dev
         libssl-dev
