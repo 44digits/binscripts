@@ -9,11 +9,14 @@
 #
 
 
-declare _MASTER_DEBIAN_TEMPLATE=debian-10
-declare _MASTER_FEDORA_TEMPLATE=fedora-32
+declare _MASTER_DEBIAN_TEMPLATE=debian-11
+declare _MASTER_FEDORA_TEMPLATE=fedora-34
 declare _CONFIGDIR="$(dirname $0)/config"
 declare _UTILITYDIR="$(dirname $0)/utilities"
 declare _SOFTWARE="$(dirname $0)/soft"
+
+declare _USB00="dom0:00_14.0"
+declare _USB01="dom0:04_00.0"
 
 declare __notifylevel=2
 
@@ -151,8 +154,8 @@ function template_install_additions () {
         dev)
             build_dev_template $_templatename
             ;;
-        dvm)
-            build_dvm_template $_templatename
+        disp)
+            build_disp_template $_templatename
             ;;
         media)
             build_media_template $_templatename
@@ -231,10 +234,10 @@ function create_appvm () {
     declare _storage=${_configs[5]}
     declare _vcpu=${_configs[6]}
     declare _netvm=${_configs[7]}
-    declare _dvm=${_configs[8]}
+    declare _disp=${_configs[8]}
 
     # 0 type;1 template;2 lable;3 maxmem;4 memory;
-    # 5 storage;6 vCPUs;7 network;8 dvm"
+    # 5 storage;6 vCPUs;7 network;8 disp"
 
     notify 2 "--create_appvm _appvm:$_appvm ${_configs[@]}"
 
@@ -264,7 +267,7 @@ function create_appvm () {
             qvm-prefs $_appvm netvm $_netvm 
         fi
         
-        if [[ $_dvm -eq "1" ]]; then
+        if [[ $_disp -eq "1" ]]; then
             qvm-prefs $_appvm template_for_dispvms True
         fi
     fi
@@ -292,11 +295,11 @@ function appvm_install_additions () {
         epub)
             build_epub_appvm $_appvm
             ;;
-        fedora-dvm)
-            build_fedoradvm_dvm $_appvm
+        fedora-disp)
+            build_fedoradisp_disp $_appvm
             ;;
-        fedora-dvm-big)
-            build_fedoradvm_dvm $_appvm
+        fedora-disp-big)
+            build_fedoradisp_disp $_appvm
             ;;
         files)
             build_files_appvm $_appvm
@@ -310,8 +313,8 @@ function appvm_install_additions () {
         media)
             build_media_appvm $_appvm
             ;;
-        printer-dvm)
-            build_printer_dvm $_appvm
+        printer-disp)
+            build_printer_disp $_appvm
             ;;
         sys-vpn-ca)
             build_vpnca $_appvm
@@ -321,19 +324,20 @@ function appvm_install_additions () {
             ;;
         usb)
             ;;
-        vpn-dvm)
-            build_vpn_dvm $_appvm
+        vpn-disp)
+            build_vpn_disp $_appvm
             ;;
-        vpn-dvm-big)
-            build_vpn_dvm $_appvm
+        vpn-disp-big)
+            build_vpn_disp $_appvm
             ;;
         work)
             build_work_appvm $_appvm
             ;;
-        plus-dvm)
-            build_plus_dvm $_appvm
+        plus-disp)
+            build_plus_disp $_appvm
             ;;
         zoom)
+            build_zoom_appvm $_appvm
             ;;
         *)
             echo "ERROR: appvm_install_additions: unknown vm $_appvm"
@@ -586,9 +590,9 @@ function build_congy_appvm () {
     declare _vm=$1
     declare _bashlines
     declare _commands
-    declare _usb01="dom0:00_1d.0"
+    #declare _usb01="dom0:00_1d.0"
 
-    qvm-prefs $_vm virt_mode pv
+    qvm-prefs $_vm virt_mode hvm 
 
     config_user $_vm
     config_user_firefox $_vm
@@ -659,14 +663,14 @@ EOF
     qvm-shutdown --wait $_vm
     qvm-pci attach \
         $_vm \
-        $_usb01 \
-        --persistent \
-        -o no-strict-reset=True
+        $_USB01 \
+        --persistent 
+    #    -o no-strict-reset=True
 }
 
 
 
-function build_dvm_template () {
+function build_disp_template () {
     declare _vm=$1
 
     config_template_firefox $_vm
@@ -675,7 +679,7 @@ function build_dvm_template () {
     qvm-shutdown --wait $_vm
 }
 
-function build_fedoradvm_dvm  () {
+function build_fedoradisp_disp  () {
     declare _vm=$1
     # nothing to do
 
@@ -862,7 +866,7 @@ function build_work_appvm () {
     qvm-shutdown --wait $_vm
 }
 
-function build_plus_dvm () {
+function build_plus_disp () {
     declare _vm=$1
 
     config_user $_vm
@@ -933,7 +937,7 @@ EOF
     qvm-shutdown --wait $_vm 
 }
 
-function build_printer_dvm () {
+function build_printer_disp () {
     declare _vm=$1
 
     config_user $_vm
@@ -1158,12 +1162,12 @@ EOF
 
 }
 
-function build_vpn_dvm () {
+function build_vpn_disp () {
     declare _vm=$1
     declare _startupscript="/home/user/startup"
     declare _text
 
-    notify 2 "--build_vpn_dvm: _vm:$_vm"
+    notify 2 "--build_vpn_disp: _vm:$_vm"
     _netvm=$(qvm-prefs $_vm netvm)
     notify 2 "--netvm: $_netvm"
     qvm-prefs $_vm netvm ""
@@ -1209,7 +1213,7 @@ EOF
 function create_vpn () {
     declare _vpnvm=sys-vpn-ro
     declare _apptemplate=debian-9-plus
-    declare _vpnappdvm=vpn-dvm
+    declare _vpnappdvm=vpn-disp
 
     notify 2 "--create_vpn: _vpnvm:$_vpnvm, _systemplate:$_SYSTEMPLATE, _apptemplate:$_apptemplate"
 
@@ -1294,8 +1298,8 @@ function install_printer_soft () {
 function create_printer_appvms() {
     local TEMPLATE=$1
 
-    # create printer dvm
-    local appvm=printer-dvm
+    # create printer disp
+    local appvm=printer-disp
     check_vm $appvm
 
     qvm-create --class AppVM --template $TEMPLATE --label red --prop=maxmem=2048 --prop=memory=400 $appvm
@@ -1452,17 +1456,18 @@ VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
     [gpg]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;800;400;x;1;x;0"
     [epub]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;2000;500;50000;1;x;0"
     [work]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;x;2;x;0"
-    [plus-dvm]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;2000;600;x;2;sys-firewall;1"
-    [vpn-dvm]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;9216;2;sys-vpn-ro;1"
-    [vpn-dvm-big]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;28672;2;sys-vpn-ro;1"
-    [fedora-dvm]="AppVM;${VM_TEMPLATE_NAMES[dvm]};red;2000;600;x;2;sys-vpn-ro;1"
-    [fedora-dvm-big]="AppVM;${VM_TEMPLATE_NAMES[dvm]};red;2000;600;10000;2;sys-vpn-ro;1"
+    [study]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;5000;2;sys-firewall;0"
+    [plus-disp]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;2000;600;x;2;sys-firewall;1"
+    [fedora-disp]="AppVM;${VM_TEMPLATE_NAMES[disp]};red;2000;600;x;2;sys-firewall;1"
+    [fedora-disp-big]="AppVM;${VM_TEMPLATE_NAMES[disp]};red;2000;600;10000;2;sys-firewall;1"
     #[sys-vpn-ca]="AppVM;${VM_TEMPLATE_NAMES[vpn]};orange;500;400;x;1;sys-net;0"
     [sys-vpn-ro]="AppVM;${VM_TEMPLATE_NAMES[vpn]};orange;500;400;x;1;sys-net;0"
+    [vpn-disp]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;9216;2;x;1"
+    [vpn-disp-big]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;28672;2;x;1"
     [media]="AppVM;${VM_TEMPLATE_NAMES[media]};green;8192;1024;30720;2;sys-firewall;0"
-    [printer-dvm]="AppVM;${VM_TEMPLATE_NAMES[printer]};red;974;350;x;1;sys-firewall;1"
+    [printer-disp]="AppVM;${VM_TEMPLATE_NAMES[printer]};red;974;350;x;1;sys-firewall;1"
     #[usb]="AppVM;${VM_TEMPLATE_NAMES[usb]};orange;4000;2000;22528;3;sys-firewall;0"
-    #[zoom]="AppVM;${VM_TEMPLATE_NAMES[zoom]};orange;4000;400;x;3;sys-firewall;1"
+    [zoom]="AppVM;${VM_TEMPLATE_NAMES[plus]};orange;0;4000;x;4;sys-firewall;0"
     )
 
 VM_SOFT=( 
