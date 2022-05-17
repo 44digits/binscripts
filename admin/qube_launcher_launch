@@ -1,0 +1,6 @@
+#!/bin/bash
+
+xfce4-terminal -e /home/coconut/admin/qube_launcher --geometry=40x45 &
+
+
+
