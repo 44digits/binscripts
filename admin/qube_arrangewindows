@@ -64,7 +64,7 @@ set_window_geom $win_id 100 170 1000 852 0 1
 
 # workflowy
 win_id=$(get_windowid_xdotool "workflowy")
-set_window_geom $win_id 773 30 900 850 0 0
+set_window_geom $win_id 723 30 900 850 0 1
 
 # vlc
 win_id=$(get_windowid_wmctrl "vlc")
