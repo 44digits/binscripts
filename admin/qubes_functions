@@ -21,8 +21,17 @@ function notify () {
 }
 
 
-function zenity_fix () {
+function __zenity_fix () {
     zenity "$@" 2>/dev/null
+}
+
+
+function zenity_list () {
+    options=( "$@" )
+    COLUMNS=1; select opt in "${options[@]}"; do
+        echo $opt
+        break
+    done
 }
 
 
