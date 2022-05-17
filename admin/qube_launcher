@@ -144,15 +144,15 @@ function firefox_plugins () {
     declare _urls=$(tr -s [:space:] ' ' <<EOF
         https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/
         https://addons.mozilla.org/en-US/firefox/addon/privacy-badger17/
-        https://addons.mozilla.org/en-US/firefox/addon/printable-the-print-doctor/
-        https://addons.mozilla.org/en-US/firefox/addon/user-agent-string-switcher/
-        https://outerjoin.us
 EOF
     )
     qvm_firefox $__DVM "$_urls" &
 
 #        https://addons.mozilla.org/en-US/firefox/addon/noscript/ 
 #        https://addons.mozilla.org/en-US/firefox/addon/adblock-plus/
+#        https://addons.mozilla.org/en-US/firefox/addon/printable-the-print-doctor/
+#        https://addons.mozilla.org/en-US/firefox/addon/user-agent-string-switcher/
+#        https://outerjoin.us
 }
 
 
