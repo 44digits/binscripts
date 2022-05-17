@@ -132,7 +132,7 @@ function qvm_chrome () {
     declare _vm="$1"
     declare _url="${@:2}"
 
-    qvm-run \
+    nohup qvm-run \
         $__qvm_run_options \
         --dispvm=$_vm \
         "chromium --password-store=basic $_url" &
@@ -303,7 +303,7 @@ function safe_execute () {
 
     lockit
     wait_disk_ready
-    eval $_command &
+    eval $_command & 
     unlockit
 
     notify 2 "safe_execute: evaled"
@@ -409,12 +409,12 @@ function launcher_main () {
             # apps to run in any vm or dvm
             arrange)
                 declare _mydir=$(dirname "$0")
-                $_mydir/qube_arrangewindows
+                nohup $_mydir/qube_arrangewindows
                 ;; 
 
             classicFM)
                 safe_execute_vm $__MEDIA \
-                    qvm-run \
+                    nohup qvm-run \
                         $__qvm_run_options \
                         $__MEDIA \
                         "\"vlc /home/user/media/ClassicFMMP3.m3u\""
@@ -433,18 +433,18 @@ function launcher_main () {
                 declare _vm=$(get_vmname)
 
                 if [[ "$_vm" ]]; then 
-                    if [[ "$_vm" == *"dvm"* ]]; then
-                        safe_execute \
-                            qvm-run \
+                    if [[ "$_vm" == *"-disp"* ]]; then
+                        #safe_execute \
+                            nohup qvm-run \
                                 $__qvm_run_options \
                                 --dispvm=$_vm \
-                                "$_app_selected"
+                                "$_app_selected" &
                     else
-                        safe_execute_vm $_vm \
-                            qvm-run \
+                        #safe_execute_vm $_vm \
+                            nohup qvm-run \
                                 $__qvm_run_options \
                                 $_vm \
-                                "$_app_selected"
+                                "$_app_selected" &
                     fi
                 fi
                 ;;
@@ -482,6 +482,7 @@ function launcher_main () {
                     $__qvm_run_options \
                     $__GPG \
                     "\"gnome-terminal --geometry=115x10 -e 'bash -c \\\"grep -i insperity $_loginfile;bash\\\" '\""
+                sleep 5
                 ;;
 
             calibre)
@@ -536,7 +537,6 @@ function launcher_main () {
                 sleep 3
                 safe_execute \
                     thunderbird_local
-                    #qvm-run $__qvm_run_options email "/home/user/thunderbird_timefix"
                 sleep 1
                 safe_execute firefox_plugins
                 safe_execute firefox_work
@@ -545,6 +545,7 @@ function launcher_main () {
                         $__qvm_run_options \
                         $__MEDIA \
                         "\"vlc /home/user/media/ClassicFMMP3.m3u\""
+                sleep 5
                 ;;
 
             *)
@@ -552,6 +553,7 @@ function launcher_main () {
 
         esac
     fi
+    sleep 7
 }
 
 launcher_main
