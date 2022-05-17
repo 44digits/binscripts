@@ -545,6 +545,26 @@ EOF
 
 
 
+function build_zoom_appvm () {
+    declare _vm=$1
+
+    qvm-prefs $_vm virt_mode hvm
+
+    config_user $_vm
+    config_user_firefox $_vm
+
+    qube_remove_incomming $_vm
+    qvm-shutdown --wait $_vm
+    qvm-pci attach \
+        $_vm \
+        $_USB00 \
+        --persistent 
+
+    #    -o no-strict-reset=True
+}
+
+
+
 function build_congy_template () {
     declare _vm=$1
     declare _debpath
