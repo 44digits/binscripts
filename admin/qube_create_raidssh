@@ -1,0 +1,212 @@
+#!/bin/bash
+
+# qube_create_raidssh 
+#
+# create disposable ssh qube attached to raid
+#
+# Date: 2021.07.14
+#
+
+declare _DVM=fedora-dvm
+declare _RAIDDEVICE="dom0:md127"
+declare _RAID_MOUNTPOINT="/home/user/raid"
+declare _USB_MOUNTPOINT="/home/user/usb"
+declare _SOFTWARELIST="openssh-server"
+declare __dialogheight=600
+
+source $(dirname "$0")/qubes_functions
+set -e
+
+
+
+function qube_setup () {
+    declare _disp=$1
+    declare _commands
+        # echo "Time4time." | passwd --stdin user
+
+    qube_install_software $_disp $_SOFTWARELIST
+
+    _commands=$(cat <<EOF
+        iptables -I INPUT -s 0/0 -j ACCEPT
+        systemctl enable sshd
+        systemctl start sshd
+EOF
+)
+    qube_run_commands $_disp "root" "$_commands"
+
+    _commands=$(cat <<EOF
+        ssh-keygen -t rsa -b 2048 -f /home/user/key -q -N ""
+        chmod 600 /home/user/key*
+        mkdir /home/user/.ssh
+        chmod 700 /home/user/.ssh
+        mv /home/user/key.pub /home/user/.ssh/authorized_keys
+        mkdir $_RAID_MOUNTPOINT
+        mkdir $_USB_MOUNTPOINT
+EOF
+)
+    qube_run_commands $_disp "user" "$_commands"
+}
+
+
+
+function choose_device () {
+    declare _blocks
+    declare _usbs
+    declare _selectedblock
+    
+    _blocks=$(qvm-device block \
+        | sort \
+        | cut -f 1 -d' ' \
+        | paste -sd " " )
+
+    _selecteddevice=$(zenity \
+        --height=$__dialogheight \
+        --list \
+        --title="Block" \
+        --column="Block" \
+        $_blocks )
+    notify 2 "choose_device: $_selecteddevice"
+    echo $_selecteddevice
+}
+
+
+function copy_key_tousb () {
+    declare _disp=$1
+    declare _keydevice
+    declare _deviceid
+
+    _keydevice=$(choose_device)
+    if [ -z "$_keydevice" ]; then 
+        notify 1 "ERROR: no device chosen"
+        exit 1
+    fi
+
+    _deviceid=$(attach_device $_disp $_keydevice $_USB_MOUNTPOINT)
+    sleep 2
+    qube_run_commands $_disp "user" "mv /home/user/key $_USB_MOUNTPOINT"
+    detach_device $_disp $_keydevice $_USB_MOUNTPOINT
+
+    notify 2 "copy_key_tousb: key copied to $_keydevice"
+}
+
+
+
+function network_setup () {
+    declare _disp=$1
+    $(dirname "$0")/qvm-portfwd-iptables $_disp 22 tcp
+}
+
+
+
+function attach_raid (){
+    declare _disp=$1
+    declare _deviceid
+
+    _deviceid=$(attach_device $_disp $_RAIDDEVICE $_RAID_MOUNTPOINT)
+    echo "$_deviceid"
+
+    notify 2 "attach_raid: attached $_RAIDDEVICE to $_deviceid"
+}
+
+
+
+function wait_to_kill () {
+    declare _disp=$1
+
+    zenity_fix --info --title "Raid SSH" --text "Waiting to kill RAID VM"
+    sleep 2
+    detach_device $_disp $_RAIDDEVICE $_RAID_MOUNTPOINT
+    sleep 2
+    qvm-kill $_disp
+
+    notify 2 "wait_to_kill: $_disp halted"
+}
+
+
+
+function main () {
+    declare _disp
+
+    _disp=$(qube_get_disposable_vm "$_DVM")
+    notify 2 "disposable qube: $_disp"
+
+    qube_setup $_disp
+    copy_key_tousb $_disp
+    network_setup $_disp
+    attach_raid $_disp
+    wait_to_kill $_disp
+
+}
+
+
+
+main
+
+
+
+
+
+
+
+: <<'END'
+sudo iptables -I INPUT -s 0/0 -j ACCEPT
+sudo dnf install openssh-server
+sudo systemctl enable sshd
+sudo systemctl start sshd
+sudo systemctl status sshd
+cd /usr/lib/systemd/system
+ls
+ls ssh&
+ls ssh*
+less sshd.service 
+ssh-keygen -t rsa
+cd
+ls .ssh
+cd .ssh/
+qvm-copy id_rsa
+whoami
+sudo passwd user
+passwd
+which passwd
+passwd
+ls /etc
+cat /etc/passwd
+sudo -s
+sudo dnf install passwd
+sudo passwd user
+cd
+rm -rf .ssh
+cd QubesIncoming/disp7399/
+sl
+ls
+mv id_rsa.pub ~/
+cd
+ls
+mkdir .ssh
+ls 
+ls .ssh
+cat .ssh/authorized_keys 
+cat id_rsa.pub 
+ls -al 
+chmod 700 .ssh/
+cd .ssh
+ls -al
+cd
+rm -rf .ssh
+ssh-keygen -t rsa
+ls -al
+cd .ssh
+ls -al
+mv id_rsa.pub authorized_keys
+chmod 600 authorized_keys 
+ls -l
+qvm-copy id_rsa 
+cd
+passwd --help
+sudo passwd -d user
+cd
+ ls -al
+ls .config/
+ls .cache/
+ls .local/share/
+END
