@@ -1550,6 +1550,7 @@ EOF
     [printer]=$(tr -s [:space:] '&' <<EOF
         eog
         evince
+        exiftool
         gimp
         nautilus
         pdfarranger
