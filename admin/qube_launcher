@@ -29,7 +29,7 @@ __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
     transfer
     usb03
     work
-    zoom-conference
+    zoom
 EOF
 )
 
