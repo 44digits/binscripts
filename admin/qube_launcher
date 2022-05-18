@@ -192,7 +192,7 @@ function qube_vpn () {
         "/home/user/startup" &
 
     # zenity_fix --info --title "VPN" --text "Waiting to kill VPN"
-    read -ep $'\nWaiting to kill VPN...' _xx
+    read -ep $'\nWaiting to kill VPN...\n\n' _xx
 
     _vpndvm=$(get_vpn_qubename)
 
