@@ -192,7 +192,7 @@ function qube_vpn () {
         "/home/user/startup"
 
     # zenity_fix --info --title "VPN" --text "Waiting to kill VPN"
-    read -ep $"\nWaiting to kill VPN..." _xx
+    read -ep $'\nWaiting to kill VPN...' _xx
 
     _vpndvm=$(get_vpn_qubename)
 
@@ -354,7 +354,7 @@ function launcher_main () {
                 
             '<search>')
                 declare _searchstring
-                read -ep $"\nSearch terms:" _searchstring
+                read -ep $'\nSearch terms:' _searchstring
 
                 if [[ ! -z "$_searchstring" ]]; then
                     qvm_firefox $__DVM "-search \"$_searchstring\""
@@ -363,7 +363,7 @@ function launcher_main () {
 
             '<url>')
                 declare _url
-                read -ep $"\nURL: " _url
+                read -ep $'\nURL: ' _url
                 qvm_firefox $__DVM "$_url"
                 ;;
 
