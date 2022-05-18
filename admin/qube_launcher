@@ -189,7 +189,7 @@ function qube_vpn () {
 
     qvm-run \
         --dispvm=$__VPNDVM \
-        "/home/user/startup"
+        "/home/user/startup" &
 
     # zenity_fix --info --title "VPN" --text "Waiting to kill VPN"
     read -ep $'\nWaiting to kill VPN...' _xx
@@ -397,7 +397,7 @@ function launcher_main () {
                 qvm-run \
                     $__qvm_run_options \
                     $__MEDIA \
-                    "\"vlc /home/user/media/ClassicFMMP3.m3u\""
+                    "\"vlc /home/user/media/ClassicFMMP3.m3u\"" &
                 wait_qube_startup $__MEDIA
                 ;;
 
@@ -465,7 +465,7 @@ function launcher_main () {
                 qvm-run \
                     $__qvm_run_options \
                     $__EPUB \
-                    "calibre"
+                    "calibre" &
                 wait_qube_startup $__EPUB
                 ;;
                 
@@ -476,7 +476,7 @@ function launcher_main () {
                 qvm-run \
                     $__qvm_run_options \
                     $__MEDIA \
-                    "kodi"
+                    "kodi" &
                 wait_qube_startup $__MEDIA
                 ;;
                 
@@ -484,14 +484,14 @@ function launcher_main () {
                 qvm-run \
                     $__qvm_run_options \
                     --dispvm=$__PRINTERDVM \
-                    "xterm -e scanBro"
+                    "xterm -e scanBro" &
                 sleep $__DISPWAIT
                 ;;
             vpn)
                 qvm-run \
                     $__qvm_run_options \
                     $__VPN_NETWORK \
-                    "'xterm -e watch -cd -n 2 ip addr'"
+                    "xterm -e watch -cd -n 2 ip addr" &
                 wait_qube_startup $__VPN_NETWORK
 
                 qube_vpn
@@ -502,7 +502,7 @@ function launcher_main () {
                 qvm-run \
                     $__qvm_run_options \
                     $__FIREWALL \
-                    'xterm -e ping google.com'
+                    'xterm -e ping google.com' &
                 ;;
             win10start)
                 win10_start
@@ -514,17 +514,17 @@ function launcher_main () {
                 qvm-run \
                     $__qvm_run_options \
                     $__CONGY \
-                    "gnome-terminal"
+                    "gnome-terminal" &
                 sleep 3
                 qvm-run \
                     $__qvm_run_options \
                     $__CONGY \
-                    "teams"
+                    "teams" &
                 sleep 3
                 qvm-run \
                     $__qvm_run_options \
                     $__CONGY \
-                    "/home/user/startup"
+                    "/home/user/startup" &
                 wait_qube_startup $__CONGY 
                 sleep 3
 
@@ -539,7 +539,7 @@ function launcher_main () {
                 qvm-run \
                     $__qvm_run_options \
                     $__MEDIA \
-                    "\"vlc /home/user/media/ClassicFMMP3.m3u\""
+                    "\"vlc /home/user/media/ClassicFMMP3.m3u\"" &
                 wait_qube_startup $__MEDIA
                 ;;
 
