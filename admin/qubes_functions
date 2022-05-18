@@ -21,9 +21,9 @@ function notify () {
 }
 
 
-function __zenity_fix () {
-    zenity "$@" 2>/dev/null
-}
+# function __zenity_fix () {
+#     zenity "$@" 2>/dev/null
+# }
 
 
 function zenity_list () {
@@ -41,7 +41,6 @@ function wait_qube_startup () {
 
     while [ "$_state" != "Running" ]; do
         _state=$(qube_get_state $_vm)
-        echo "... received --$_state--"
         sleep 2
     done
 }
