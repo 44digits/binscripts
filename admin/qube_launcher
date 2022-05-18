@@ -11,7 +11,6 @@ source /home/coconut/admin/qubes_functions
 
 __DIALOGHEIGHT=770
 __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
-    ..............................
     fedora-disp
     media-disp
     plus-disp
@@ -30,11 +29,11 @@ __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
     transfer
     work
     zoom
+    ..............................
 EOF
 )
 
 __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
-    ..............................
     <pass>
     <search>
     <url>
@@ -89,13 +88,8 @@ function get_vmname () {
     declare _vms=$(qvm-ls --raw-list --running --exclude dom0 --all \
         | sort \
         | tr '[[:space:]]' ' ')
-    # declare _vm=$(zenity_fix \
-    #     --height=$__DIALOGHEIGHT \
-    #     --list \
-    #     --title="VM" \
-    #     --column="VM" \
-    #     $_vms $__DVMS)
-    declare _vm=$(zenity_list $_vms $__DVMS)
+
+    declare _vm=$(zenity_list $__DVMS $_vms )
     echo $_vm
 }
 
@@ -342,16 +336,10 @@ function launcher_main () {
 
     if [[ "$_app_selected" ]]; then
         case $_app_selected in
-            # web bookmarks
            '<pass>')
                 declare _loginfile="logins_2022"
-
-                # declare _passstring=$(zenity_fix \
-                #     --entry \
-                #     --title="Pass:")
-
                 declare _passstring
-                read -ep "\nPassword: " _passstring
+                read -ep $'\nPassword: ' _passstring
 
                 if [[ ! -z "$_passstring" ]]; then
                     safe_execute_vm $__GPG \
@@ -364,9 +352,6 @@ function launcher_main () {
                 ;;
                 
             '<search>')
-                # declare _searchstring=$(zenity_fix \
-                #     --entry \
-                #     --title="Search terms:")
                 declare _searchstring
                 read -ep "\nSearch terms:" _searchstring
 
@@ -376,9 +361,6 @@ function launcher_main () {
                 ;;
 
             '<url>')
-                # declare _url=$(zenity_fix \
-                #     --entry \
-                #     --title="URL")
                 declare _url
                 read -ep "\nURL: " _url
                 safe_execute qvm_firefox $__DVM "$_url"
@@ -419,6 +401,7 @@ function launcher_main () {
                 ;;
 
             chromium)
+                clear
                 declare _vm=$(get_vmname)
 
                 if [[ "$_vm" ]]; then 
@@ -428,6 +411,7 @@ function launcher_main () {
                 ;;
 
             firefox | gedit | nautilus | xterm | gnome-terminal)
+                clear
                 declare _vm=$(get_vmname)
 
                 if [[ "$_vm" ]]; then 
@@ -448,6 +432,7 @@ function launcher_main () {
                 ;;
 
             hostnames)
+                clear
                 declare _vm=$(get_vmname)
                 if [[ "$_vm" ]]; then 
                     declare _localdir=$(dirname "$0")
@@ -456,6 +441,7 @@ function launcher_main () {
                 ;;
 
             postTrello)
+                clear
                 declare _vm=$(get_vmname)
                 if [[ "$_vm" ]]; then 
                     install_posttrello $_vm 
