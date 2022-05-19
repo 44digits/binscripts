@@ -83,7 +83,7 @@ declare __FIREWALL=sys-firewall
 declare __qvm_run_options="-vp --color-stderr=37"
 #declare __lockme=/tmp/launcher.lock
 declare __DISPWAIT=10
-
+declare __MIC=dom0:mic
 
 function get_vmname () {
     declare _vms=$(qvm-ls --raw-list --running --exclude dom0 --all \
@@ -526,6 +526,7 @@ function launcher_main () {
                     $__CONGY \
                     "/home/user/startup" &
                 wait_qube_startup $__CONGY 
+                qvm-device mic attach $__CONGY $__MIC
                 sleep 3
 
                 thunderbird_local
