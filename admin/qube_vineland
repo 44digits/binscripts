@@ -10,7 +10,7 @@
 declare _VINELANDCONFIGDIR="$(dirname "${BASH_SOURCE[0]}")/utilities/vineland"
 declare _SOFTWARELIST="remmina"
 declare _REMMINACONFIGDIR="/home/user/.local/share/remmina"
-declare _DVM=fedora-dvm
+declare _DVM=fedora-disp
 
 source $(dirname "$0")/qubes_functions
 
