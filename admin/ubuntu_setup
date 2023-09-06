@@ -18,6 +18,8 @@ declare __STANDARDSOFTWARE=$(tr -s [:space:] '&' <<EOF
     cryptsetup
     ecryptfs-utils 
     evince
+    gnupg
+    software-properties-common
     gimp
     gnome-shell-extensions
     gnome-tweak-tool
@@ -31,12 +33,22 @@ declare __STANDARDSOFTWARE=$(tr -s [:space:] '&' <<EOF
     libdbd-sqlite3
     liblzma-dev
     libreoffice
+    libreoffice
     lzip
-    pdfshuffler
-    s3cmd
+    mdadm
+    pdfarranger
+    pdftk
+    remmina
+    rsync
     screen
     scrypt
     sqlite3
+    texlive 
+    texlive-fonts-extra 
+    texlive-fonts-recommended 
+    texlive-latex-base 
+    texlive-latex-extra 
+    texlive-latex-recommended 
     tmux
     ubuntu-restricted-extras
     vim
@@ -83,7 +95,6 @@ EOF
 )
 
 declare __SNAPS=$(tr -s [:space:] '&' <<EOF
-	pdftk
 EOF
 )
 
@@ -210,8 +221,17 @@ function add_gis_repos () {
 
     notify 1 "add_gis_repos"
 
-    sudo su -c "echo \"deb https://qgis.org/ubuntu $_osversion main\" > /etc/apt/sources.list.d/qgis.list"
-    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-key 51F523511C7028C3
+    #sudo su -c "echo \"deb https://qgis.org/ubuntu $_osversion main\" > /etc/apt/sources.list.d/qgis.list"
+    #sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-key 51F523511C7028C3
+
+    # instructions from: https://qgis.org/en/site/forusers/alldownloads.html#debian-ubuntu
+    wget -qO - https://qgis.org/downloads/qgis-2021.gpg.key \
+        | sudo gpg \
+            --no-default-keyring \
+            --keyring gnupg-ring:/etc/apt/trusted.gpg.d/qgis-archive.gpg \
+            --import
+    sudo chmod a+r /etc/apt/trusted.gpg.d/qgis-archive.gpg
+    sudo add-apt-repository "deb https://qgis.org/ubuntu $(lsb_release -c -s) main"
 
     sudo apt-get -y update
 }
@@ -236,7 +256,7 @@ function config_user () {
 
     _lines=$(cat <<EOF
         alias rm="rm -i"
-        alias pvc="python3.8 -m venv venv"
+        alias pvc="python3.9 -m venv venv"
         alias pva="source ./venv/bin/activate"
 
         export PATH=\$PATH:\$HOME/bin
@@ -269,21 +289,23 @@ EOF
 
 
 function install_python3 () {
-    declare __pyarc=$(basename $_PYTHONURL)
-    declare __pydir="/tmp/$(basename -s .tar.xz $_PYTHONURL)"
     declare __pyasc
     declare __pyascurl
     declare __dummy
     declare __filemd5
     declare __pymd5
+    declare _pythonurl
 
-    notify 1 "Installing python from $_PYTHONURL"
-    if [[ $(check_url $_PYTHONURL) -ne 0 ]]; then
-        notify 0 "ERROR: unable to access geoserver url: $_PYTHONURL"
+    notify 1 "Installing python:"
+    read -p "Enter Python archive URL: " _pythonurl
+    if [[ $(check_url $_pythonurl) -ne 0 ]]; then
+        notify 0 "ERROR: unable to access geoserver url: $_pythonurl"
         exit 1
     fi
+    declare __pyarc=$(basename $_pythonurl)
+    declare __pydir="/tmp/$(basename -s .tar.xz $_pythonurl)"
 
-    wget -c -P /tmp $_PYTHONURL
+    wget -c -P /tmp $_pythonurl
 
     # check integrity/security
     # imported signing key with:
@@ -322,18 +344,18 @@ case $OPTION in
         update_system
         add_gis_repos 
         install_software $_SOFTWARELIST
-        install_snaps $_SNAPS
-        config_system
+        #install_snaps $_SNAPS
+        #config_system
         config_user
         ;;
     i)
         update_system
         add_gis_repos 
         install_software $_SOFTWARELIST
-        install_snaps $_SNAPS
+        #install_snaps $_SNAPS
         ;;
     s)
-        config_system
+        #config_system
         ;;
     u)
         config_user

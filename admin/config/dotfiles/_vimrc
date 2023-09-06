@@ -10,7 +10,9 @@
 
 
 " No mouse stuff
-set mouse=
+"set mouse=
+" mouse setting for gvim
+set mousemodel=popup
 
 " Sets how many lines of history VIM has to remember
 set history=700

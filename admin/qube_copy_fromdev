@@ -50,11 +50,8 @@ END
 
 
 read -r -d '' _filelist <<EOF
-    qube_copy_fromdev
     qube_admin
     qubes_functions
-    qube_backup
-    qube_restore
     qube_launcher
 EOF
 

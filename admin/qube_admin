@@ -9,11 +9,14 @@
 #
 
 
-declare _MASTER_DEBIAN_TEMPLATE=debian-10
-declare _MASTER_FEDORA_TEMPLATE=fedora-32
+declare _MASTER_DEBIAN_TEMPLATE=debian-11
+declare _MASTER_FEDORA_TEMPLATE=fedora-34
 declare _CONFIGDIR="$(dirname $0)/config"
 declare _UTILITYDIR="$(dirname $0)/utilities"
 declare _SOFTWARE="$(dirname $0)/soft"
+
+declare _USB00="dom0:00_14.0"
+declare _USB01="dom0:04_00.0"
 
 declare __notifylevel=2
 
@@ -62,11 +65,20 @@ function template_name () {
     declare _name_parts 
 
     _name_parts=(${_templateconfig//:/ })
-    if [ "${#_name_parts[@]}" -eq "2" ]; then
-        echo "${_name_parts[0]}-${_name_parts[1]}"
-    else
+    if [ -z "${_name_parts[1]}" ]; then
         echo "${_name_parts[0]}"
+    else
+        echo "${_name_parts[0]}-${_name_parts[1]}"
     fi
+}
+
+
+function template_size () {
+    declare _templateconfig=$1
+    declare _name_parts 
+
+    _name_parts=(${_templateconfig//:/ })
+    echo "${_name_parts[2]}"
 }
 
 
@@ -101,11 +113,10 @@ function update_all_templates () {
 
         qube_update $_templatename
         qube_install_software $_templatename $_softwarelist
+        qvm-shutdown --wait $_templatename
     done
 
 }
-
-
 
 
 function create_template () {
@@ -113,6 +124,7 @@ function create_template () {
     declare _software=$2
     declare _master=$(template_master $_templateconfig)
     declare _template=$(template_name $_templateconfig)
+    declare _template_size=$(template_size $_templateconfig)
 
     notify 1 "--create_template : _template:$_template, _software:$_software"
     
@@ -123,6 +135,9 @@ function create_template () {
     else
         notify 2 "--create_template : creating _template:$_template"
         qvm-clone $_master $_template
+        if [ -n "$_template_size" ]; then
+            qvm-volume extend $_template:root "${_template_size}GB"
+        fi
         qube_update $_template
         qube_install_software $_template $_software
 
@@ -150,8 +165,8 @@ function template_install_additions () {
         dev)
             build_dev_template $_templatename
             ;;
-        dvm)
-            build_dvm_template $_templatename
+        disp)
+            build_disp_template $_templatename
             ;;
         media)
             build_media_template $_templatename
@@ -230,10 +245,10 @@ function create_appvm () {
     declare _storage=${_configs[5]}
     declare _vcpu=${_configs[6]}
     declare _netvm=${_configs[7]}
-    declare _dvm=${_configs[8]}
+    declare _disp=${_configs[8]}
 
     # 0 type;1 template;2 lable;3 maxmem;4 memory;
-    # 5 storage;6 vCPUs;7 network;8 dvm"
+    # 5 storage;6 vCPUs;7 network;8 disp"
 
     notify 2 "--create_appvm _appvm:$_appvm ${_configs[@]}"
 
@@ -263,7 +278,7 @@ function create_appvm () {
             qvm-prefs $_appvm netvm $_netvm 
         fi
         
-        if [[ $_dvm -eq "1" ]]; then
+        if [[ $_disp -eq "1" ]]; then
             qvm-prefs $_appvm template_for_dispvms True
         fi
     fi
@@ -291,11 +306,11 @@ function appvm_install_additions () {
         epub)
             build_epub_appvm $_appvm
             ;;
-        fedora-dvm)
-            build_fedoradvm_dvm $_appvm
+        fedora-disp)
+            build_fedoradisp_appvm $_appvm
             ;;
-        fedora-dvm-big)
-            build_fedoradvm_dvm $_appvm
+        fedora-disp-big)
+            build_fedoradisp_appvm $_appvm
             ;;
         files)
             build_files_appvm $_appvm
@@ -309,8 +324,8 @@ function appvm_install_additions () {
         media)
             build_media_appvm $_appvm
             ;;
-        printer-dvm)
-            build_printer_dvm $_appvm
+        printer-disp)
+            build_printer_disp $_appvm
             ;;
         sys-vpn-ca)
             build_vpnca $_appvm
@@ -320,19 +335,20 @@ function appvm_install_additions () {
             ;;
         usb)
             ;;
-        vpn-dvm)
-            build_vpn_dvm $_appvm
+        vpn-disp)
+            build_vpn_disp $_appvm
             ;;
-        vpn-dvm-big)
-            build_vpn_dvm $_appvm
+        vpn-disp-big)
+            build_vpn_disp $_appvm
             ;;
         work)
             build_work_appvm $_appvm
             ;;
-        plus-dvm)
-            build_plus_dvm $_appvm
+        plus-disp)
+            build_plus_disp $_appvm
             ;;
         zoom)
+            build_zoom_appvm $_appvm
             ;;
         *)
             echo "ERROR: appvm_install_additions: unknown vm $_appvm"
@@ -527,6 +543,24 @@ EOF
 
 
 
+function build_zoom_appvm () {
+    declare _vm=$1
+
+    qvm-prefs $_vm virt_mode hvm
+
+    config_user $_vm
+    config_user_firefox $_vm
+
+    qube_remove_incomming $_vm
+    qvm-shutdown --wait $_vm
+    qvm-pci attach \
+        $_vm \
+        $_USB00 \
+        --persistent 
+}
+
+
+
 function build_congy_template () {
     declare _vm=$1
     declare _debpath
@@ -585,13 +619,11 @@ function build_congy_appvm () {
     declare _vm=$1
     declare _bashlines
     declare _commands
-    declare _usb01="dom0:00_1d.0"
 
-    qvm-prefs $_vm virt_mode pv
+    qvm-prefs $_vm virt_mode hvm 
 
     config_user $_vm
     config_user_firefox $_vm
-
 
     _commands=$(cat <<EOF
         mkdir -p /rw/config/qubes-bind-dirs.d
@@ -656,16 +688,15 @@ EOF
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
-    qvm-pci attach \
-        $_vm \
-        $_usb01 \
-        --persistent \
-        -o no-strict-reset=True
+    #qvm-pci attach \
+    #    $_vm \
+    #    $_USB01 \
+    #    --persistent 
 }
 
 
 
-function build_dvm_template () {
+function build_disp_template () {
     declare _vm=$1
 
     config_template_firefox $_vm
@@ -674,15 +705,16 @@ function build_dvm_template () {
     qvm-shutdown --wait $_vm
 }
 
-function build_fedoradvm_dvm  () {
+
+function build_fedoradisp_appvm () {
     declare _vm=$1
-    # nothing to do
+
+    config_user $_vm
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
     qvm-features $_vm appmenus-dispvm 1
 }
-
 
 
 function build_media_template () {
@@ -807,7 +839,6 @@ function build_min_appvm () {
 }
 
 
-
 function build_plus_template () {
     declare _vm=$1
 
@@ -816,6 +847,7 @@ function build_plus_template () {
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
 }
+
 
 function build_epub_appvm () {
     declare _vm=$1
@@ -839,6 +871,7 @@ function build_epub_appvm () {
     qvm-shutdown --wait $_vm
 }
 
+
 function build_work_appvm () {
     declare _vm=$1
 
@@ -861,7 +894,8 @@ function build_work_appvm () {
     qvm-shutdown --wait $_vm
 }
 
-function build_plus_dvm () {
+
+function build_plus_disp () {
     declare _vm=$1
 
     config_user $_vm
@@ -883,7 +917,6 @@ function build_plus_dvm () {
     qvm-shutdown --wait $_vm
     qvm-features $_vm appmenus-dispvm 1
 }
-
 
 
 function build_printer_template () {
@@ -932,7 +965,8 @@ EOF
     qvm-shutdown --wait $_vm 
 }
 
-function build_printer_dvm () {
+
+function build_printer_disp () {
     declare _vm=$1
 
     config_user $_vm
@@ -955,7 +989,6 @@ function build_printer_dvm () {
     qvm-shutdown --wait $_vm
     qvm-features $_vm appmenus-dispvm 1
 }
-
 
 
 function build_usb_template () {
@@ -1024,7 +1057,7 @@ function build_vpnro () {
 
 	build_vpn_server $_vm
     qube_remove_incomming $_vm
-    qvm-shutdown --wait $_vm
+    #qvm-shutdown --wait $_vm
 }
 
 function build_vpn_server () {
@@ -1124,7 +1157,7 @@ EOF
 		"root" \
 		/rw/config/qubes-firewall-user-script \
         "$_text"
-
+        
     _text=$(cat <<EOF
 #!/bin/bash
 VPN_CLIENT='openvpn'
@@ -1157,20 +1190,26 @@ EOF
 
 }
 
-function build_vpn_dvm () {
+function build_vpn_disp () {
     declare _vm=$1
     declare _startupscript="/home/user/startup"
     declare _text
 
-    notify 2 "--build_vpn_dvm: _vm:$_vm"
+    notify 2 "--build_vpn_disp: _vm:$_vm"
     _netvm=$(qvm-prefs $_vm netvm)
     notify 2 "--netvm: $_netvm"
     qvm-prefs $_vm netvm ""
 
+    config_user $_vm
+    config_template_firefox $_vm
+
     _text=$(cat <<EOF
 #!/bin/bash
 
-firefox &
+firefox \
+     "https://www.iplocation.net/" \
+     "https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/" \
+     "https://addons.mozilla.org/en-US/firefox/addon/privacy-badger17/" &
 nautilus &
 deluge &
 
@@ -1202,7 +1241,7 @@ EOF
 function create_vpn () {
     declare _vpnvm=sys-vpn-ro
     declare _apptemplate=debian-9-plus
-    declare _vpnappdvm=vpn-dvm
+    declare _vpnappdvm=vpn-disp
 
     notify 2 "--create_vpn: _vpnvm:$_vpnvm, _systemplate:$_SYSTEMPLATE, _apptemplate:$_apptemplate"
 
@@ -1287,8 +1326,8 @@ function install_printer_soft () {
 function create_printer_appvms() {
     local TEMPLATE=$1
 
-    # create printer dvm
-    local appvm=printer-dvm
+    # create printer disp
+    local appvm=printer-disp
     check_vm $appvm
 
     qvm-create --class AppVM --template $TEMPLATE --label red --prop=maxmem=2048 --prop=memory=400 $appvm
@@ -1421,22 +1460,21 @@ declare -A VM_TEMPLATE_NAMES
 declare -A VM_CONFIG
 
 VM_TEMPLATE_NAMES=( 
-    [debian]="$_MASTER_DEBIAN_TEMPLATE:"
-    [fedora]="$_MASTER_FEDORA_TEMPLATE:"
-    [congy]="$_MASTER_DEBIAN_TEMPLATE:congy"
-    [dev]="$_MASTER_DEBIAN_TEMPLATE:dev"
-    [dvm]="$_MASTER_FEDORA_TEMPLATE:dvm"
-    [media]="$_MASTER_DEBIAN_TEMPLATE:media"
-    [min]="$_MASTER_DEBIAN_TEMPLATE:min"
-    [plus]="$_MASTER_DEBIAN_TEMPLATE:plus"
-    [printer]="$_MASTER_DEBIAN_TEMPLATE:printer"
-    [usb]="$_MASTER_FEDORA_TEMPLATE:usb"
-    [vpn]="$_MASTER_FEDORA_TEMPLATE:vpn"
-    #[zoom]="$_MASTER_DEBIAN_TEMPLATE:zoom"
+    [debian]="$_MASTER_DEBIAN_TEMPLATE::"
+    [fedora]="$_MASTER_FEDORA_TEMPLATE::"
+    [congy]="$_MASTER_DEBIAN_TEMPLATE:congy:"
+    [dev]="$_MASTER_DEBIAN_TEMPLATE:dev:"
+    [disp]="$_MASTER_FEDORA_TEMPLATE:disp:"
+    [media]="$_MASTER_DEBIAN_TEMPLATE:media:"
+    [min]="$_MASTER_DEBIAN_TEMPLATE:min:"
+    [plus]="$_MASTER_DEBIAN_TEMPLATE:plus:15"
+    [printer]="$_MASTER_DEBIAN_TEMPLATE:printer:"
+    #[usb]="$_MASTER_FEDORA_TEMPLATE:usb:"
+    [vpn]="$_MASTER_FEDORA_TEMPLATE:vpn:"
 )
 
 
-VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
+VM_CONFIG=( # "type;template;lable;maxmem;memory;storage;vCPUs;network;disp"
     [congy]="AppVM;${VM_TEMPLATE_NAMES[congy]};orange;0;4000;x;4;sys-firewall;0"
     [dev]="AppVM;${VM_TEMPLATE_NAMES[dev]};yellow;4000;400;10000;2;x;0"
     [email]="AppVM;${VM_TEMPLATE_NAMES[min]};blue;2000;600;15000;2;sys-firewall;0"
@@ -1445,26 +1483,30 @@ VM_CONFIG=( # "type;template;lable;maxmem;memory;name;storage;vCPUs;network;dvm"
     [gpg]="AppVM;${VM_TEMPLATE_NAMES[min]};purple;800;400;x;1;x;0"
     [epub]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;2000;500;50000;1;x;0"
     [work]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;x;2;x;0"
-    [plus-dvm]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;2000;600;x;2;sys-firewall;1"
-    [vpn-dvm]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;9216;2;sys-vpn-ro;1"
-    [vpn-dvm-big]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;28672;2;sys-vpn-ro;1"
-    [fedora-dvm]="AppVM;${VM_TEMPLATE_NAMES[dvm]};red;2000;600;x;2;sys-firewall;1"
-    [fedora-dvm-big]="AppVM;${VM_TEMPLATE_NAMES[dvm]};red;2000;600;10000;2;sys-firewall;1"
+    [study]="AppVM;${VM_TEMPLATE_NAMES[plus]};green;4000;400;5000;2;sys-firewall;0"
+    [plus-disp]="AppVM;${VM_TEMPLATE_NAMES[plus]};red;2000;600;x;2;sys-firewall;1"
+    [fedora-disp]="AppVM;${VM_TEMPLATE_NAMES[disp]};red;2000;600;x;2;sys-firewall;1"
+    [fedora-disp-big]="AppVM;${VM_TEMPLATE_NAMES[disp]};red;2000;600;10000;2;sys-firewall;1"
     #[sys-vpn-ca]="AppVM;${VM_TEMPLATE_NAMES[vpn]};orange;500;400;x;1;sys-net;0"
     [sys-vpn-ro]="AppVM;${VM_TEMPLATE_NAMES[vpn]};orange;500;400;x;1;sys-net;0"
+    [vpn-disp]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;9216;2;x;1"
+    [vpn-disp-big]="AppVM;${VM_TEMPLATE_NAMES[vpn]};red;4000;400;28672;2;x;1"
     [media]="AppVM;${VM_TEMPLATE_NAMES[media]};green;8192;1024;30720;2;sys-firewall;0"
-    [printer-dvm]="AppVM;${VM_TEMPLATE_NAMES[printer]};red;974;350;x;1;sys-firewall;1"
+    [printer-disp]="AppVM;${VM_TEMPLATE_NAMES[printer]};red;974;350;x;1;sys-firewall;1"
     #[usb]="AppVM;${VM_TEMPLATE_NAMES[usb]};orange;4000;2000;22528;3;sys-firewall;0"
-    #[zoom]="AppVM;${VM_TEMPLATE_NAMES[zoom]};orange;4000;400;x;3;sys-firewall;1"
+    [zoom]="AppVM;${VM_TEMPLATE_NAMES[plus]};orange;0;4000;x;4;sys-firewall;0"
     )
 
 VM_SOFT=( 
     [plus]=$(tr -s [:space:] '&' <<EOF
         audacity
         calibre
+        cheese
         chromium
         curl
         eog
+        exiftool
+        ffmpeg
         gimp
         git
         gnucash
@@ -1474,9 +1516,12 @@ VM_SOFT=(
         libdbd-sqlite3
         librecad
         libreoffice
+        libreoffice-gtk3
         nautilus
+        pdfarranger
         pdftk
         python3-pip
+        python3-venv
         remmina
         rsync
         screen
@@ -1487,6 +1532,7 @@ VM_SOFT=(
         texlive-latex-extra 
         texlive-latex-recommended 
         tmux
+        vim-gtk
         vlc
         xournal
         xsane
@@ -1495,10 +1541,11 @@ EOF
     [media]=$(tr -s [:space:] '&' <<EOF
         chromium
         eog
-        rsync
+        ffmpeg
         kodi
         libavcodec-extra
         nautilus
+        rsync
         vlc
 EOF
     )
@@ -1533,11 +1580,13 @@ EOF
         screen
         sqlite3
         tmux
+        vim-gtk
 EOF
     )
     [printer]=$(tr -s [:space:] '&' <<EOF
         eog
         evince
+        exiftool
         gimp
         nautilus
         pdfarranger

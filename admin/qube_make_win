@@ -8,8 +8,11 @@
 # https://github.com/Qubes-Community/Contents/blob/master/docs/os/windows/windows-vm.md
 
 
-declare WINVMNAME=win10
-declare WINISO="disp6554:/home/user/Downloads/Win10_21H1_English_x64.iso"
+declare WINVMNAME=$(date +'win10-%Y%m%d')
+declare WINISO="files:/home/user/Software/win10_20220509.iso"
+declare RAM_SIZE=5120
+declare C_DRIVE_SIZE="80g"
+declare D_DRIVE_SIZE="10g"
 
 declare __notifylevel=2
 
@@ -26,11 +29,11 @@ function make_win_vm () {
         --property vcpus=4 \
         --property virt_mode=hvm \
         $WINVMNAME
-    qvm-prefs $WINVMNAME memory 6144
-    qvm-prefs $WINVMNAME maxmem 6144
+    qvm-prefs $WINVMNAME memory $RAM_SIZE
+    qvm-prefs $WINVMNAME maxmem $RAM_SIZE
     qvm-prefs $WINVMNAME kernel ''
-    qvm-volume extend $WINVMNAME:root 40g
-    qvm-volume extend $WINVMNAME:private 10g
+    qvm-volume extend $WINVMNAME:root $C_DRIVE_SIZE
+    qvm-volume extend $WINVMNAME:private $D_DRIVE_SIZE
     qvm-prefs $WINVMNAME debug true
     qvm-features $WINVMNAME video-model cirrus
 

@@ -6,19 +6,21 @@
 #
 # 2020.03.11
 
-source $(dirname "$0")/qubes_functions
+#source $(dirname "$0")/qubes_functions
+source /home/coconut/admin/qubes_functions
+declare __notifylevel=1
 
 __DIALOGHEIGHT=770
 __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
-    ..............................
-    fedora-32-dvm
-    media-dvm
-    plus-dvm
-    printer-dvm
+    fedora-disp
+    media-disp
+    plus-disp
+    printer-disp
     ..............................
     congy
     dev
     email
+    epub
     files
     fin
     gpg
@@ -26,14 +28,13 @@ __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
     study
     tex
     transfer
-    usb03
     work
-    zoom-conference
+    zoom
+    ..............................
 EOF
 )
 
 __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
-    ..............................
     <pass>
     <search>
     <url>
@@ -50,53 +51,49 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
     calibre
     chromium
     classicFM
-    congy
     firefox
     gedit
     gnome-terminal
-    hangouts
+    gvim
     hostnames
     insperity
     kodi
     nautilus
-    postTrello
     thunder
+    win10start
     xterm
     ..............................
     scan
-    vpn-ro
     vpn
     ping
+    studytime
     shutdown
     startup
 EOF
 )
 
-declare __DVM=fedora-dvm
-declare __PLUSDVM=plus-dvm
-declare __VPNDVM=vpn-dvm
+declare __DVM=fedora-disp
+declare __PLUSDVM=plus-disp
+declare __VPNDVM=vpn-disp
 declare __VPN_NETWORK=sys-vpn-ro
 declare __CONGY=congy
 declare __EMAIL=email
 declare __EPUB=epub
 declare __MEDIA=media
-declare __PRINTERDVM=printer-dvm
+declare __PRINTERDVM=printer-disp
 declare __GPG=gpg
 declare __FIREWALL=sys-firewall
 declare __qvm_run_options="-vp --color-stderr=37"
-declare __lockme=/tmp/launcher.lock
-
+#declare __lockme=/tmp/launcher.lock
+declare __DISPWAIT=15
+declare __MIC=dom0:mic
 
 function get_vmname () {
     declare _vms=$(qvm-ls --raw-list --running --exclude dom0 --all \
         | sort \
         | tr '[[:space:]]' ' ')
-    declare _vm=$(zenity_fix \
-        --height=$__DIALOGHEIGHT \
-        --list \
-        --title="VM" \
-        --column="VM" \
-        $_vms $__DVMS)
+
+    declare _vm=$(zenity_list $__DVMS $_vms )
     echo $_vm
 }
 
@@ -119,7 +116,8 @@ function qvm_firefox () {
     qvm-run \
         $__qvm_run_options \
         --dispvm=$_vm \
-        "firefox $_url" &
+        "firefox $_url && sudo shutdown" &
+    sleep $__DISPWAIT
 }
 
 
@@ -131,7 +129,8 @@ function qvm_chrome () {
     qvm-run \
         $__qvm_run_options \
         --dispvm=$_vm \
-        "chromium --password-store=basic $_url" &
+        "chromium --password-store=basic $_url && sudo shutdown" &
+    sleep $__DISPWAIT
 }
 
 
@@ -140,15 +139,15 @@ function firefox_plugins () {
     declare _urls=$(tr -s [:space:] ' ' <<EOF
         https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/
         https://addons.mozilla.org/en-US/firefox/addon/privacy-badger17/
-        https://addons.mozilla.org/en-US/firefox/addon/printable-the-print-doctor/
-        https://addons.mozilla.org/en-US/firefox/addon/user-agent-string-switcher/
-        https://outerjoin.us
 EOF
     )
-    qvm_firefox $__DVM "$_urls" &
+    qvm_firefox $__DVM "$_urls"
 
 #        https://addons.mozilla.org/en-US/firefox/addon/noscript/ 
 #        https://addons.mozilla.org/en-US/firefox/addon/adblock-plus/
+#        https://addons.mozilla.org/en-US/firefox/addon/printable-the-print-doctor/
+#        https://addons.mozilla.org/en-US/firefox/addon/user-agent-string-switcher/
+#        https://outerjoin.us
 }
 
 
@@ -156,17 +155,19 @@ EOF
 function firefox_work () {
     declare _urls=$(tr -s [:space:] ' ' <<EOF
         http://workflowy.com/login/
+        https://www.notion.so/login
+        https://evernote.com/Login.action
         https://trello.com/login
-        https://events.hackster.io/xcellent
+        https://www.commafeed.com
 EOF
     )
-    qvm_firefox $__DVM "$_urls" &
+    qvm_firefox $__DVM "$_urls"
 }
 
 
 
 function chrome_linkedin () {
-    qvm_chrome $__PLUSDVM "https://linkedin.com" &
+    qvm_chrome $__PLUSDVM "https://linkedin.com"
 }
 
 
@@ -185,15 +186,17 @@ function get_vpn_qubename () {
 function qube_vpn () {
     declare _vpndvm
     
-    safe_execute qvm-start \
+    qvm-start \
         --skip-if-running \
         $__VPN_NETWORK
 
-    safe_execute qvm-run \
+    qvm-run \
         --dispvm=$__VPNDVM \
-        "/home/user/startup"
+        "/home/user/startup" &
 
-    zenity_fix --info --title "VPN" --text "Waiting to kill VPN"
+    # zenity_fix --info --title "VPN" --text "Waiting to kill VPN"
+    read -ep $'\nWaiting to kill VPN...\n\n' _xx
+
     _vpndvm=$(get_vpn_qubename)
 
     notify 2 "qube_vpn found:$_vpndvm"
@@ -224,9 +227,26 @@ EOF
 
 
 
+function win10_start () {
+    qvm-run \
+        $__qvm_run_options \
+        -u root \
+        sys-firewall \
+        "iptables -I FORWARD 2 -s 10.137.0.0/24 -d 10.137.0.39 -j ACCEPT"
+    qvm-start win10-esri
+    wait_qube_startup win10-esri
+}
+
+
+
 function thunderbird_local () {
-    qvm-run -u root $__qvm_run_options $__EMAIL "/home/user/fix_locale"
-    qvm-run $__qvm_run_options $__EMAIL "/home/user/thunderbird_timefix"
+    #qvm-run -u root $__qvm_run_options $__EMAIL "/home/user/fix_locale"
+    #qvm-run $__qvm_run_options $__EMAIL "/home/user/thunderbird_timefix" &
+    qvm-run \
+        $__qvm_run_options \
+        $__EMAIL \
+        "thunderbird" &
+    wait_qube_startup $__EMAIL
 }
 
 
@@ -263,244 +283,292 @@ function qube_shutdown () {
 
 
 
-function safe_execute_vm () {
-    declare _vm=$1
-    declare _command=${@:2}
-
-    notify 2 "safe_execute_vm: vm:$_vm with $_command"
-
-    if [[ $(qube_get_state $_vm) == "Running" ]]; then
-        eval $_command &
-    else
-        safe_execute $_command
-    fi
-}
-
-
-
-function safe_execute () {
-    declare _command=$@
-
-    notify 2 "safe_execute: $_command"
-
-    lockit
-    wait_disk_ready
-    eval $_command &
-    unlockit
-
-    notify 2 "safe_execute: evaled"
-}
+# function safe_execute_vm () {
+#     declare _vm=$1
+#     declare _command=${@:2}
+# 
+#     notify 2 "safe_execute_vm: vm:$_vm with $_command"
+# 
+#     if [[ $(qube_get_state $_vm) == "Running" ]]; then
+#         eval $_command &
+#     else
+#         safe_execute $_command
+#     fi
+# }
 
 
 
-function unlockit () {
-    sleep 1
-    rmdir $__lockme
-    notify 2 "unlockit: lock removed"
-}
-
-
-
-function lockit () {
-    while ! mkdir $__lockme 2>/dev/null; do
-        notify 2 "lockit: waiting"
-        sleep 1
-    done
-
-    notify 2 "lockit: lock made"
-}
+# function safe_execute () {
+#     declare _command=$@
+# 
+#     notify 2 "safe_execute: $_command"
+# 
+#     lockit
+#     wait_disk_ready
+#     eval $_command & 
+#     unlockit
+# 
+#     notify 2 "safe_execute: evaled"
+# }
+# 
+# 
+# 
+# function unlockit () {
+#     sleep 1
+#     rmdir $__lockme
+#     notify 2 "unlockit: lock removed"
+# }
+# 
+# 
+# 
+# function lockit () {
+#     while ! mkdir $__lockme 2>/dev/null; do
+#         notify 2 "lockit: waiting"
+#         sleep 1
+#     done
+# 
+#     notify 2 "lockit: lock made"
+# }
 
 
 
 function launcher_main () {
-    declare _app_selected=$(zenity_fix \
-        --height=$__DIALOGHEIGHT \
-        --list \
-        --title="Application" \
-        --column="Application" \
+    # declare _app_selected=$(zenity_fix \
+    #     --height=$__DIALOGHEIGHT \
+    #     --list \
+    #     --title="Application" \
+    #     --column="Application" \
+    #     $__APPS)
+
+    declare _app_selected=$(zenity_list \
         $__APPS)
 
     if [[ "$_app_selected" ]]; then
         case $_app_selected in
-            # web bookmarks
            '<pass>')
-                declare _loginfile="logins_2021"
-                declare _passstring=$(zenity_fix \
-                    --entry \
-                    --title="Pass:")
+                declare _loginfile="logins_2023"
+                declare _passstring
+                read -ep $'\nPassword: ' _passstring
+
                 if [[ ! -z "$_passstring" ]]; then
-                    safe_execute_vm $__GPG \
-                        qvm-run \
+                    qvm-run \
                         $__qvm_run_options \
                         $__GPG \
-                        "\"gnome-terminal --geometry=115x10 -e 'bash -c \\\"grep -i $_passstring $_loginfile;bash\\\" '\""
-
+                        "gnome-terminal --geometry=115x10 -e 'bash -c \"grep -i $_passstring $_loginfile;bash\" '" &
+                    wait_qube_startup $__GPG
                 fi
                 ;;
                 
             '<search>')
-                declare _searchstring=$(zenity_fix \
-                    --entry \
-                    --title="Search terms:")
+                declare _searchstring
+                read -ep $'\nSearch terms:' _searchstring
+
                 if [[ ! -z "$_searchstring" ]]; then
-                    safe_execute qvm_firefox $__DVM "-search \"$_searchstring\""
+                    qvm_firefox $__DVM "-search \"$_searchstring\""
                 fi
                 ;;
 
             '<url>')
-                declare _url=$(zenity_fix \
-                    --entry \
-                    --title="URL")
-                safe_execute qvm_firefox $__DVM "$_url"
+                declare _url
+                read -ep $'\nURL: ' _url
+                qvm_firefox $__DVM "$_url"
                 ;;
 
             democracynow.org | aljazeera.com)
-                safe_execute qvm_chrome $__PLUSDVM "$_app_selected"
+                qvm_chrome $__PLUSDVM "$_app_selected"
                 ;;
 
             google.com | gmail.com | privateemail.com)
-                safe_execute qvm_firefox $__DVM $_app_selected
+                qvm_firefox $__DVM $_app_selected
                 ;;
 
             linkedin.com)
-                safe_execute chrome_linkedin
+                chrome_linkedin
                 ;;
 
             workflowy.com)
-                safe_execute firefox_work
+                firefox_work
                 ;;
 
             plugins.com)
-                safe_execute firefox_plugins
+                firefox_plugins
                 ;;
 
             # apps to run in any vm or dvm
             arrange)
                 declare _mydir=$(dirname "$0")
-                $_mydir/qube_arrangewindows
+                exec $_mydir/qube_arrangewindows
                 ;; 
 
             classicFM)
-                safe_execute_vm $__MEDIA \
-                    qvm-run \
-                        $__qvm_run_options \
-                        $__MEDIA \
-                        "\"vlc /home/user/media/ClassicFMMP3.m3u\""
+                qvm-run \
+                    $__qvm_run_options \
+                    $__MEDIA \
+                    "vlc /home/user/media/ClassicFMMP3.m3u" &
+                wait_qube_startup $__MEDIA
                 ;;
 
-            chromium | firefox | gedit | nautilus | xterm | gnome-terminal)
+            chromium)
+                clear
                 declare _vm=$(get_vmname)
 
                 if [[ "$_vm" ]]; then 
-                    if [[ "$_vm" == *"dvm"* ]]; then
-                        safe_execute \
-                            qvm-run \
-                                $__qvm_run_options \
-                                --dispvm=$_vm \
-                                "$_app_selected"
+                    qvm_chrome $_vm
+                    wait_qube_startup $_vm
+                fi
+                ;;
+
+            firefox | gedit | gvim | nautilus | xterm | gnome-terminal)
+                clear
+                declare _vm=$(get_vmname)
+
+                if [[ "$_vm" ]]; then 
+                    if [[ "$_vm" == *"-disp"* ]]; then
+                        qvm-run \
+                            $__qvm_run_options \
+                            --dispvm=$_vm \
+                            "$_app_selected && sudo shutdown" &
+                        sleep $__DISPWAIT
+
                     else
-                        safe_execute_vm $_vm \
-                            qvm-run \
-                                $__qvm_run_options \
-                                $_vm \
-                                "$_app_selected"
+                        qvm-run \
+                            $__qvm_run_options \
+                            $_vm \
+                            "$_app_selected" &
+                        wait_qube_startup $_vm
                     fi
                 fi
                 ;;
 
             hostnames)
+                clear
                 declare _vm=$(get_vmname)
                 if [[ "$_vm" ]]; then 
                     declare _localdir=$(dirname "$0")
-                    $_localdir/qube_hostnames $_vm 
+                    exec $_localdir/qube_hostnames $_vm 
                 fi
                 ;;
 
             postTrello)
+                clear
                 declare _vm=$(get_vmname)
                 if [[ "$_vm" ]]; then 
                     install_posttrello $_vm 
                 fi
                 ;;
             # apps for specific vms
-            congy)
-                safe_execute_vm $__CONGY \
-                    qvm-run $__qvm_run_options $__CONGY "gnome-terminal"
-                ;;
-
-            hangouts)
-                safe_execute_vm usb03 \
-                    qvm_chrome usb03 "https://hangouts.google.com"
-                ;;
-
             insperity)
-                safe_execute qvm_firefox $__DVM https://insperity.com
-                declare _loginfile="logins_2021"
-                safe_execute_vm gpg \
-                    qvm-run \
+                qvm_firefox $__DVM https://insperity.com
+
+                declare _loginfile="logins_2023"
+                qvm-run \
                     $__qvm_run_options \
                     $__GPG \
-                    "\"gnome-terminal --geometry=115x10 -e 'bash -c \\\"grep -i insperity $_loginfile;bash\\\" '\""
+                    "gnome-terminal --geometry=115x10 -e 'bash -c \"grep -i insperity $_loginfile;bash\" '"
+                wait_qube_startup $__GPG
                 ;;
 
             calibre)
-                safe_execute_vm epub \
-                    qvm-run $__qvm_run_options $__EPUB "calibre"
+                qvm-run \
+                    $__qvm_run_options \
+                    $__EPUB \
+                    "calibre" &
+                wait_qube_startup $__EPUB
                 ;;
                 
             thunder)
-                safe_execute \
-                    thunderbird_local
+                thunderbird_local
                 ;;
             kodi)
-                safe_execute_vm media \
-                    qvm-run $__qvm_run_options $__MEDIA "kodi"
+                qvm-run \
+                    $__qvm_run_options \
+                    $__MEDIA \
+                    "kodi" &
+                wait_qube_startup $__MEDIA
                 ;;
                 
             scan)
-                safe_execute qvm-run \
+                qvm-run \
                     $__qvm_run_options \
                     --dispvm=$__PRINTERDVM \
-                    "xterm -e scanBro"
-                ;;
-            vpn-ro)
-                safe_execute_vm sys-vpn-ro \
-                    qvm-run $__qvm_run_options $__VPN_NETWORK "'xterm -e watch -cd -n 2 ip addr'"
+                    "xterm -e scanBro && sudo shutdown" &
+                sleep $__DISPWAIT
                 ;;
             vpn)
+                qvm-run \
+                    $__qvm_run_options \
+                    $__VPN_NETWORK \
+                    "xterm -e watch -cd -n 2 ip addr" &
+                wait_qube_startup $__VPN_NETWORK
+
                 qube_vpn
+                sleep $__DISPWAIT
                 ;;
             # system maintenance
             ping)
                 qvm-run \
                     $__qvm_run_options \
                     $__FIREWALL \
-                    'xterm -e ping google.com'
+                    'xterm -e ping google.com' &
+                ;;
+            win10start)
+                win10_start
                 ;;
             shutdown)
                 qube_shutdown
                 ;;
             startup)
-                safe_execute_vm $__CONGY \
-                    qvm-run $__qvm_run_options $__CONGY "gnome-terminal"
-                sleep 1
-                safe_execute_vm $__CONGY \
-                    qvm-run $__qvm_run_options $__CONGY "teams"
-                sleep 1
-                safe_execute_vm $__CONGY \
-                    qvm-run $__qvm_run_options $__CONGY "/home/user/startup"
+                qvm-run \
+                    $__qvm_run_options \
+                    $__CONGY \
+                    "gnome-terminal" &
                 sleep 3
-                safe_execute \
-                    thunderbird_local
-                    #qvm-run $__qvm_run_options email "/home/user/thunderbird_timefix"
-                sleep 1
-                safe_execute firefox_plugins
-                safe_execute firefox_work
-                safe_execute_vm media \
-                    qvm-run \
-                        $__qvm_run_options \
-                        $__MEDIA \
-                        "\"vlc /home/user/media/ClassicFMMP3.m3u\""
+                qvm-run \
+                    $__qvm_run_options \
+                    $__CONGY \
+                    "teams" &
+                sleep 3
+                qvm-run \
+                    $__qvm_run_options \
+                    $__CONGY \
+                    "/home/user/startup" &
+                wait_qube_startup $__CONGY 
+                qvm-device mic attach $__CONGY $__MIC
+                sleep 3
+
+                thunderbird_local
+                sleep 3
+
+                firefox_plugins
+                sleep 3
+                firefox_work
+                sleep 3
+
+                qvm-run \
+                    $__qvm_run_options \
+                    $__MEDIA \
+                    "vlc /home/user/media/ClassicFMMP3.m3u" &
+                wait_qube_startup $__MEDIA
+                ;;
+            studytime)
+                thunderbird_local
+                sleep 3
+
+                firefox_plugins
+                sleep 3
+                firefox_work
+                sleep 3
+                qvm-run \
+                    $__qvm_run_options \
+                    study \
+                    firefox &
+                sleep 3
+
+                qvm-run \
+                    $__qvm_run_options \
+                    $__MEDIA \
+                    "vlc /home/user/media/ClassicFMMP3.m3u" &
+                wait_qube_startup $__MEDIA
                 ;;
 
             *)
@@ -508,6 +576,7 @@ function launcher_main () {
 
         esac
     fi
+    sleep 3
 }
 
 launcher_main
