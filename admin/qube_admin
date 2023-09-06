@@ -307,10 +307,10 @@ function appvm_install_additions () {
             build_epub_appvm $_appvm
             ;;
         fedora-disp)
-            build_fedoradisp_disp $_appvm
+            build_fedoradisp_appvm $_appvm
             ;;
         fedora-disp-big)
-            build_fedoradisp_disp $_appvm
+            build_fedoradisp_appvm $_appvm
             ;;
         files)
             build_files_appvm $_appvm
@@ -706,7 +706,7 @@ function build_disp_template () {
 }
 
 
-function build_fedoradisp_disp  () {
+function build_fedoradisp_appvm () {
     declare _vm=$1
 
     config_user $_vm
