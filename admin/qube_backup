@@ -14,13 +14,16 @@ declare __qvm_run_options="${__qvm_run_options:-"-p --color-stderr=37"}"
 declare __dialogheight=600
 
 read -r -d '' _qubebackuplist <<EOF
-    congy5
+    congy
     dev
     email
     epub
     files
     fin
     gpg
+    media
+    study
+    work
 EOF
 set -e 
 
@@ -78,12 +81,14 @@ function detach_device () {
     declare _xx
 
     qvm-run $__qvm_run_options $_vm "sync"
-    sleep 2
-    notify "detach_device: continue?"
-    read _xx
+    sleep 3
+    qvm-run $__qvm_run_options $_vm "sync"
+    sleep 3
+    #notify "detach_device: continue?"
+    #read _xx
 
     qvm-run $__qvm_run_options -u root $_vm "umount $_mountpoint"
-    sleep 2
+    sleep 3
     qvm-device block detach $_vm $_device
     notify "detach_device: $_vm $_device"
 }
@@ -98,8 +103,8 @@ function main () {
     notify "Qube Backup starting..."
     notify "... shutdown email"
 
-    #for _vm in $_qubebackuplist; do
-    for _vm in "$@"; do
+    for _vm in $_qubebackuplist; do
+    #for _vm in "$@"; do
         notify "-- $_vm: starting backup"
         
         _deviceid=$(attach_device $_vm $_backupdevice $_mountpoint)
@@ -114,6 +119,9 @@ function main () {
                 --filter="- */Trash/*"
                 --filter="- *venv*"
                 --filter="- *.iso"
+                --filter="- .local/lib/*"
+                --filter="- .zoom/*"
+                --filter="- anaconda*"
                 /home/user/
                 /mnt/backup/bak/qubes/$_vm/
 EOF
