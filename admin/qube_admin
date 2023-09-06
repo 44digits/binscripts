@@ -1516,10 +1516,12 @@ VM_SOFT=(
         libdbd-sqlite3
         librecad
         libreoffice
+        libreoffice-gtk3
         nautilus
         pdfarranger
         pdftk
         python3-pip
+        python3-venv
         remmina
         rsync
         screen
@@ -1539,10 +1541,11 @@ EOF
     [media]=$(tr -s [:space:] '&' <<EOF
         chromium
         eog
-        rsync
+        ffmpeg
         kodi
         libavcodec-extra
         nautilus
+        rsync
         vlc
 EOF
     )
@@ -1566,7 +1569,6 @@ EOF
         curl
         git
         gnucash
-        gvim
         libdbd-sqlite3
         libffi-dev
         libssl-dev
@@ -1578,6 +1580,7 @@ EOF
         screen
         sqlite3
         tmux
+        vim-gtk
 EOF
     )
     [printer]=$(tr -s [:space:] '&' <<EOF
