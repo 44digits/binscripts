@@ -1,0 +1,12 @@
+#!/bin/bash
+
+echo "Enter card #"
+read CARDNUMBER
+echo "Enter code"
+read CODENUMBER
+echo "Enter expirary date"
+read EXPDATE
+
+echo "Updating: $1"
+exiftool -Subject="$CARDNUMBER $EXPDATE $CODENUMBER" $1
+
