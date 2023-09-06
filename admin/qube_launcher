@@ -8,6 +8,7 @@
 
 #source $(dirname "$0")/qubes_functions
 source /home/coconut/admin/qubes_functions
+declare __notifylevel=1
 
 __DIALOGHEIGHT=770
 __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
@@ -53,6 +54,7 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
     firefox
     gedit
     gnome-terminal
+    gvim
     hostnames
     insperity
     kodi
@@ -64,6 +66,7 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
     scan
     vpn
     ping
+    studytime
     shutdown
     startup
 EOF
@@ -82,7 +85,7 @@ declare __GPG=gpg
 declare __FIREWALL=sys-firewall
 declare __qvm_run_options="-vp --color-stderr=37"
 #declare __lockme=/tmp/launcher.lock
-declare __DISPWAIT=10
+declare __DISPWAIT=15
 declare __MIC=dom0:mic
 
 function get_vmname () {
@@ -113,7 +116,7 @@ function qvm_firefox () {
     qvm-run \
         $__qvm_run_options \
         --dispvm=$_vm \
-        "firefox $_url" &
+        "firefox $_url && sudo shutdown" &
     sleep $__DISPWAIT
 }
 
@@ -126,7 +129,7 @@ function qvm_chrome () {
     qvm-run \
         $__qvm_run_options \
         --dispvm=$_vm \
-        "chromium --password-store=basic $_url" &
+        "chromium --password-store=basic $_url && sudo shutdown" &
     sleep $__DISPWAIT
 }
 
@@ -138,7 +141,7 @@ function firefox_plugins () {
         https://addons.mozilla.org/en-US/firefox/addon/privacy-badger17/
 EOF
     )
-    qvm_firefox $__DVM "$_urls" &
+    qvm_firefox $__DVM "$_urls"
 
 #        https://addons.mozilla.org/en-US/firefox/addon/noscript/ 
 #        https://addons.mozilla.org/en-US/firefox/addon/adblock-plus/
@@ -158,13 +161,13 @@ function firefox_work () {
         https://www.commafeed.com
 EOF
     )
-    qvm_firefox $__DVM "$_urls" &
+    qvm_firefox $__DVM "$_urls"
 }
 
 
 
 function chrome_linkedin () {
-    qvm_chrome $__PLUSDVM "https://linkedin.com" &
+    qvm_chrome $__PLUSDVM "https://linkedin.com"
 }
 
 
@@ -237,8 +240,12 @@ function win10_start () {
 
 
 function thunderbird_local () {
-    qvm-run -u root $__qvm_run_options $__EMAIL "/home/user/fix_locale"
-    qvm-run $__qvm_run_options $__EMAIL "/home/user/thunderbird_timefix"
+    #qvm-run -u root $__qvm_run_options $__EMAIL "/home/user/fix_locale"
+    #qvm-run $__qvm_run_options $__EMAIL "/home/user/thunderbird_timefix" &
+    qvm-run \
+        $__qvm_run_options \
+        $__EMAIL \
+        "thunderbird" &
     wait_qube_startup $__EMAIL
 }
 
@@ -339,7 +346,7 @@ function launcher_main () {
     if [[ "$_app_selected" ]]; then
         case $_app_selected in
            '<pass>')
-                declare _loginfile="logins_2022"
+                declare _loginfile="logins_2023"
                 declare _passstring
                 read -ep $'\nPassword: ' _passstring
 
@@ -397,7 +404,7 @@ function launcher_main () {
                 qvm-run \
                     $__qvm_run_options \
                     $__MEDIA \
-                    "\"vlc /home/user/media/ClassicFMMP3.m3u\"" &
+                    "vlc /home/user/media/ClassicFMMP3.m3u" &
                 wait_qube_startup $__MEDIA
                 ;;
 
@@ -411,7 +418,7 @@ function launcher_main () {
                 fi
                 ;;
 
-            firefox | gedit | nautilus | xterm | gnome-terminal)
+            firefox | gedit | gvim | nautilus | xterm | gnome-terminal)
                 clear
                 declare _vm=$(get_vmname)
 
@@ -420,7 +427,7 @@ function launcher_main () {
                         qvm-run \
                             $__qvm_run_options \
                             --dispvm=$_vm \
-                            "$_app_selected" &
+                            "$_app_selected && sudo shutdown" &
                         sleep $__DISPWAIT
 
                     else
@@ -453,11 +460,11 @@ function launcher_main () {
             insperity)
                 qvm_firefox $__DVM https://insperity.com
 
-                declare _loginfile="logins_2022"
+                declare _loginfile="logins_2023"
                 qvm-run \
                     $__qvm_run_options \
                     $__GPG \
-                    "\"gnome-terminal --geometry=115x10 -e 'bash -c \\\"grep -i insperity $_loginfile;bash\\\" '\""
+                    "gnome-terminal --geometry=115x10 -e 'bash -c \"grep -i insperity $_loginfile;bash\" '"
                 wait_qube_startup $__GPG
                 ;;
 
@@ -484,7 +491,7 @@ function launcher_main () {
                 qvm-run \
                     $__qvm_run_options \
                     --dispvm=$__PRINTERDVM \
-                    "xterm -e scanBro" &
+                    "xterm -e scanBro && sudo shutdown" &
                 sleep $__DISPWAIT
                 ;;
             vpn)
@@ -540,7 +547,27 @@ function launcher_main () {
                 qvm-run \
                     $__qvm_run_options \
                     $__MEDIA \
-                    "\"vlc /home/user/media/ClassicFMMP3.m3u\"" &
+                    "vlc /home/user/media/ClassicFMMP3.m3u" &
+                wait_qube_startup $__MEDIA
+                ;;
+            studytime)
+                thunderbird_local
+                sleep 3
+
+                firefox_plugins
+                sleep 3
+                firefox_work
+                sleep 3
+                qvm-run \
+                    $__qvm_run_options \
+                    study \
+                    firefox &
+                sleep 3
+
+                qvm-run \
+                    $__qvm_run_options \
+                    $__MEDIA \
+                    "vlc /home/user/media/ClassicFMMP3.m3u" &
                 wait_qube_startup $__MEDIA
                 ;;
 
