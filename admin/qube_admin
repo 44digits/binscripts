@@ -1567,6 +1567,7 @@ EOF
         build-essential
         chromium
         curl
+        eog
         git
         gnucash
         libdbd-sqlite3
