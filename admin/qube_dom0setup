@@ -21,6 +21,9 @@ set_background () {
         --set "$_imagefile"
 }
 
+
+echo "XFCE setup"
+
 #setup keyboard
 xfconf-query \
     --channel xfce4-keyboard-shortcuts \
@@ -49,3 +52,7 @@ set_background monitorDisplayPort-1 0 0 "$_IMAGEDIRECTORY/waves3.jpg"
 set_background monitorDisplayPort-1 1 5 "$_IMAGEDIRECTORY/wallpapertip_blue-victorian-wallpaper_482450.jpg"
 set_background monitorDisplayPort-1 2 3 "$_IMAGEDIRECTORY/green_jungle.jpg"
 set_background monitorDisplayPort-1 3 2 "$_IMAGEDIRECTORY/double-bubble-dark.png"
+
+
+echo
+echo "Done."
