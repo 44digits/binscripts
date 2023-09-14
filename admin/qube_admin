@@ -1531,6 +1531,7 @@ VM_SOFT=(
         texlive-latex-base 
         texlive-latex-extra 
         texlive-latex-recommended 
+        texlive-xetex
         tmux
         vim-gtk
         vlc
