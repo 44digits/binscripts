@@ -1611,6 +1611,7 @@ EOF
         eog
         git
         nautilus
+        npm
         openfortivpn
         pdftk
         qubes-usb-proxy
