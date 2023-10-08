@@ -458,7 +458,7 @@ function launcher_main () {
                 ;;
             # apps for specific vms
             insperity)
-                qvm_firefox $__DVM https://insperity.com
+                qvm_firefox $__DVM https://portal.insperity.com
 
                 declare _loginfile="logins_2023"
                 qvm-run \
