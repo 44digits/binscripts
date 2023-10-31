@@ -202,7 +202,17 @@ function qube_vpn () {
     notify 2 "qube_vpn found:$_vpndvm"
 
     qvm-kill $_vpndvm
-    qvm-shutdown $__VPN_NETWORK
+    sleep 2
+    qvm-run \
+        $__qvm_run_options \
+        -u root \
+        $__VPN_NETWORK \
+        "pkill --signal SIGTERM openvpn"
+    qvm-run \
+        $__qvm_run_options \
+        -u root \
+        $__VPN_NETWORK \
+        "poweroff --force"
 }
 
 
