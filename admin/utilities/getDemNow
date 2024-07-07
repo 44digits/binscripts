@@ -1,0 +1,49 @@
+#!/bin/bash
+# getDemNow
+#   Download today's episode of DemocracyNow
+#   Use crontab:
+#       09 19 * * 1-5  getDemNow 2>&1 >> /tmp/getDemNow.log
+#       every weekday at 12 noon pacific
+#
+# Date: 2024 July 06
+
+set -e
+
+declare URLPATTERN="https://democracynow.cachefly.net/democracynow/360/dn%Y-%m%d.mp4"
+declare DESTINATION_DIR="/home/user/Videos/dm"
+declare FILENAMEPATTERN="DemocracyNow_%Y%m%d.mp4"
+declare FILENAMEPATTERN_DELETE="DemocracyNow_*.mp4"
+
+
+function print_usage () {
+    echo "Usage:"
+    echo "     getDemNow"
+}
+
+
+function cleandirectory () {
+    # if today is Monday delete existing videos
+    declare _dayofweek=$(date +"%w")
+
+    if [[ "$_dayofweek" == 1 ]]; then
+        rm -f "$DESTINATION_DIR/$FILENAMEPATTERN_DELETE"
+    fi
+}
+
+
+function gettodaysvideo () {
+    # download today's video
+    declare _url=$(date +"$URLPATTERN")
+    declare _filename=$(date +"$FILENAMEPATTERN")
+
+    echo "Downloading: $_url"
+    wget -O "$DESTINATION_DIR/$_filename" $_url 
+}
+
+
+function main () {
+    cleandirectory
+    gettodaysvideo
+}
+
+main
