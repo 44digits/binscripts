@@ -327,8 +327,8 @@ function appvm_install_additions () {
         media)
             build_media_appvm $_appvm
             ;;
-        printer-disp)
-            build_printer_disp $_appvm
+        printer)
+            build_printer_appvm $_appvm
             ;;
         sys-vpn-ca)
             build_vpnca $_appvm
@@ -928,11 +928,14 @@ function build_printer_template () {
     declare _print_tgz
     declare _print_sh
     declare _commands
-    declare _im_policy=/etc/ImageMagick-6/policy.xml 
 
     notify 2 "--build_printer_template: _vm:$_vm"
 
     config_template_firefox $_vm
+    config_imagemagick $_vm
+
+    qvm-service --enable $_vm cups
+    #qvm-prefs $_vm netvm "sys-firewall"
 
     _tgzpath=$(ls -t $_SOFTWARE/*brprint* | head -1)
     _print_tgz=$(basename $_tgzpath)
@@ -941,35 +944,30 @@ function build_printer_template () {
     qvm-copy-to-vm $_vm "$_SOFTWARE/$_print_tgz"
 
     notify 1 "--Install printer soft: model number MFCL2710DW"
-    qvm-prefs $_vm netvm "sys-firewall"
 
     _commands=$(cat <<EOF
         gunzip /home/user/QubesIncoming/dom0/$_print_tgz
         bash /home/user/QubesIncoming/dom0/$_print_sh
-        sed -i '/<\/policymap>/d' $_im_policy
 EOF
 )
-    qube_run_commands $_vm "root" "$_commands"
+    #qube_run_commands $_vm "root" "$_commands"
 
-    _commands=$(cat <<EOF
-  <policy domain="coder" rights="read|write" pattern="PDF" />
-</policymap>
-
-EOF
-)
-    qube_append_file \
-        $_vm \
-        "root" \
-        "$_im_policy" \
-        "$_commands"
-
-    qvm-prefs $_vm netvm ""
-    qube_remove_incomming $_vm
+    #qvm-prefs $_vm netvm ""
+    #qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm 
+
+    # enable port policy
+    echo "qubes.ConnectTCP  *  @anyvm  printer  allow  target=printer" \
+        | sudo tee --append /etc/qubes/policy.d/30-user-networking.policy
+
+    echo
+    echo "-----------------------------------------"
+    echo "TODO: install printer driver manually ???"
+    echo "-----------------------------------------"
 }
 
 
-function build_printer_disp () {
+function build_printer_appvm () {
     declare _vm=$1
 
     config_user $_vm
@@ -991,24 +989,16 @@ function build_printer_disp () {
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
     qvm-features $_vm appmenus-dispvm 1
+
+    qvm-service --enable $_vm cups
 }
-
-
-function build_usb_template () {
-    declare _vm=$1
-
-    config_template_firefox $_vm
-
-    qube_remove_incomming $_vm
-    qvm-shutdown --wait $_vm
-}
-
 
 
 function build_zoom_template () {
     declare _vm=$1
 
     config_template_firefox $_vm
+    config_template_nemo $_vm
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
