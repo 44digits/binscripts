@@ -616,9 +616,10 @@ function build_congy_template () {
     notify 2 "--create_congy_template: $_vm"
 
     config_template_firefox $_vm
+    config_template_nemo $_vm
 
     for _f in \
-        teams \
+        google \
         slack ;
     do
         _debpath=$(ls -t $_SOFTWARE/$_f* | head -1)
@@ -639,22 +640,6 @@ function build_congy_template () {
         -u root \
         $_vm \
         "sudo apt-get install -yf"
-
-    qube_copy_file \
-        $_vm \
-        "root" \
-        "$_CONFIGDIR/congy/openfortivpn.service" \
-        "/etc/systemd/system/openfortivpn.service"
-    qvm-run \
-        $__qvm_run_options \
-        -u root \
-        $_vm \
-        "chmod +x /etc/systemd/system/openfortivpn.service"
-    qvm-run \
-        $__qvm_run_options \
-        -u root \
-        $_vm \
-        "systemctl enable openfortivpn"
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
@@ -692,36 +677,6 @@ EOF
         "/rw/config/qubes-bind-dirs.d/50_user.conf"
 
     _bashlines=$(cat <<EOF
-#!/bin/bash
-
-/usr/bin/slack -s &
-/usr/bin/remmina &
-/usr/bin/firefox &
-gvim /home/user/firstDay.notes &
-
-EOF
-)
-
-	qube_write_file \
-		$_vm \
-		"user" \
-        "/home/user/startup" \
-        "$_bashlines"
-
-    _commands=$(cat <<EOF
-        mkdir -p /home/user/mounts/aross-d1
-        mkdir -p /home/user/.local/share/remmina
-        chmod +x /home/user/startup
-EOF
-)
-    qube_run_commands $_vm "user" "$_commands"
-    qube_copy_file \
-        $_vm \
-        "user" \
-        "$_CONFIGDIR/congy/group_rdp_congy.remmina.secret" \
-        "/home/user/.local/share/remmina/group_rdp_congy.remmina"
-
-    _bashlines=$(cat <<EOF
         alias aross-d1="sudo mount -t cifs -o username=aross //aross-d1.congruex.com/c$/Users/aross/Downloads /home/user/mounts/aross-d1 -o uid=1000,gid=1000"
         alias um-aross-d1="sudo umount /home/user/mounts/aross-d1"
 
@@ -735,10 +690,6 @@ EOF
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
-    #qvm-pci attach \
-    #    $_vm \
-    #    $_USB01 \
-    #    --persistent 
 }
 
 
