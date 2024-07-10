@@ -120,6 +120,8 @@ function main () {
                 --filter="- .local/lib/*"
                 --filter="- .zoom/*"
                 --filter="- anaconda*"
+                --filter="- .config/chromium/*"
+                --filter="- .config/google-chrome/*"
                 /home/user/
                 /mnt/backup/bak/qubes/$_vm/
 EOF
