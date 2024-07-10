@@ -600,10 +600,10 @@ function build_zoom_appvm () {
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
-    qvm-pci attach \
-        $_vm \
-        $_USB00 \
-        --persistent 
+    #qvm-pci attach \
+    #    $_vm \
+    #    $_USB00 \
+    #    --persistent 
 }
 
 
