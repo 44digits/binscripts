@@ -239,10 +239,17 @@ function get_vpn_qubename () {
 
 function qube_vpn () {
     declare _vpndvm
+    declare _localdir=$(dirname "$0")
+
+    # add hostnames to media
+    $_localdir/qube_hostnames media
+    qvm-run \
+        media \
+        "nemo" &
     
     qvm-start \
         --skip-if-running \
-        $__VPN_NETWORK
+        $__VPN_NETWORK &
 
     qvm-run \
         --dispvm=$__VPNDVM \
@@ -256,17 +263,7 @@ function qube_vpn () {
     notify 2 "qube_vpn found:$_vpndvm"
 
     qvm-kill $_vpndvm
-    sleep 2
-    qvm-run \
-        $__qvm_run_options \
-        -u root \
-        $__VPN_NETWORK \
-        "pkill --signal SIGTERM openvpn"
-    qvm-run \
-        $__qvm_run_options \
-        -u root \
-        $__VPN_NETWORK \
-        "poweroff --force"
+    qvm-shutdown $__VPN_NETWORK
 }
 
 
@@ -567,12 +564,7 @@ function launcher_main () {
                 sleep $__DISPWAIT
                 ;;
             vpn)
-                qvm-run \
-                    $__qvm_run_options \
-                    $__VPN_NETWORK \
-                    "xterm -e watch -cd -n 2 ip addr" &
-                wait_qube_startup $__VPN_NETWORK
-
+                #wait_qube_startup $__VPN_NETWORK
                 qube_vpn
                 sleep $__DISPWAIT
                 ;;
