@@ -13,11 +13,9 @@ declare _qubebackuplist
 declare __qvm_run_options="${__qvm_run_options:-"-p --color-stderr=37"}"
 declare __dialogheight=600
 
+#    epub
 read -r -d '' _qubebackuplist <<EOF
-    congy
-    dev
     email
-    epub
     files
     fin
     gpg
