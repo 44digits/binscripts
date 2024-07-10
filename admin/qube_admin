@@ -719,6 +719,7 @@ function build_media_template () {
     declare _vm=$1
 
     config_template_firefox $_vm
+    config_template_nemo $_vm
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
@@ -841,6 +842,8 @@ function build_plus_template () {
     declare _vm=$1
 
     config_template_firefox $_vm
+    config_imagemagick $_vm
+    config_template_nemo $_vm
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
@@ -1006,11 +1009,7 @@ function build_vpn_template () {
     notify 2 "--build_vpn_template: _vm:$_vm"
 
     config_template_firefox $_vm
-    #qvm-run \
-    #    $__qvm_run_options \
-    #    -u root \
-    #    $_vm \
-	#	"systemctl disable openvpn.service"
+    config_template_nemo $_vm
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
