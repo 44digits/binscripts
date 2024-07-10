@@ -71,16 +71,22 @@ echo "== Display setup =="
 xfconf-query \
     --channel displays \
     --property "/Default/$_MONITOR0/Position/X" \
+    --create \
+    --type int \
     --set 0
 
 xfconf-query \
     --channel displays \
     --property "/Default/$_MONITOR1/Position/X" \
+    --create \
+    --type int \
     --set 1680
 
 xfconf-query \
     --channel displays \
     --property "/Default/$_MONITOR0/Primary" \
+    --create \
+    --type bool \
     --set true
 
 xfconf-query \
