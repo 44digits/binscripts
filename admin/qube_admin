@@ -1017,165 +1017,64 @@ function build_vpn_template () {
 
 function build_vpnca () {
     declare _vm=$1
+    declare _config="$_CONFIGDIR/vpn/vpn_canada.conf.secret"
 
     notify 2 "--build_vpnca: _vm:$_vm"
 
-    qube_copy_file \
-        $_vm \
-        "user" \
-        "$_CONFIGDIR/vpn/ca.ovpn.secret" \
-        "/tmp/vpn.ovpn"
-
-	build_vpn_server $_vm
+	build_vpn_server $_vm "$_config"
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
 }
 
 function build_vpnro () {
     declare _vm=$1
+    declare _config="$_CONFIGDIR/vpn/vpn_bulgaria.conf.secret"
 
     notify 2 "--build_vpnro: _vm:$_vm"
 
-    qube_copy_file \
-        $_vm \
-        "user" \
-        "$_CONFIGDIR/vpn/ro.ovpn.secret" \
-        "/tmp/vpn.ovpn"
-
-	build_vpn_server $_vm
+	build_vpn_server $_vm "$_config"
     qube_remove_incomming $_vm
-    #qvm-shutdown --wait $_vm
+    qvm-shutdown --wait $_vm
 }
 
 function build_vpn_server () {
-    # https://github.com/Qubes-Community/Contents/blob/master/docs/configuration/vpn.md
+    # https://forum.qubes-os.org/t/wireguard-vpn-setup/19141
     declare _vm=$1
-	declare _commands
-	declare _text
+    declare _config=$2
+    declare _endpoint=$(sed -n '/Endpoint/s/^Endpoint = \(.*\):[0-9]\+/\1/p' $_config)
 
+    qvm-shutdown --wait $_vm
+    sleep 2
     qvm-prefs $_vm provides_network True
+    qvm-service --enable $_vm network-manager
+    qvm-start $_vm
+
+    qvm-firewall $_vm reset
+    qvm-firewall $_vm add action=accept dsthost=$_endpoint
+    qvm-firewall $_vm add action=accept specialtarget=dns
+    qvm-firewall $_vm add action=accept proto=icmp
+    qvm-firewall $_vm add action=drop
+    qvm-firewall $_vm del --rule-no 0
+
+    qube_copy_file \
+        $_vm \
+        "root" \
+        $_config \
+        "/rw/config/vpn.conf"
 
     qvm-run \
         $__qvm_run_options \
-        -u root \
+        -u user \
         $_vm \
-        "mkdir -p /rw/config/vpn"
-		
-    _text=$(cat <<EOF
-#!/bin/bash
-set -e
-export PATH="\$PATH:/usr/sbin:/sbin"
-export vpn_dns="8.8.8.8 8.8.4.4"
+        "nmcli connection import type wireguard file /rw/config/vpn.conf"
 
-case "\$1" in
-
-up)
-    # To override DHCP DNS, assign DNS addresses to 'vpn_dns' env variable before calling this script;
-    # Format is 'X.X.X.X  Y.Y.Y.Y [...]'
-    if [[ -z "\$vpn_dns" ]] ; then
-        # Parses DHCP foreign_option_* vars to automatically set DNS address translation:
-        for optionname in \${!foreign_option_*} ; do
-            option="\${!optionname}"
-            unset fops; fops=(\$option)
-            if [ \${fops[1]} == "DNS" ] ; then vpn_dns="\$vpn_dns \${fops[2]}" ; fi
-        done
-    fi
-
-    iptables -t nat -F PR-QBS
-    if [[ -n "\$vpn_dns" ]] ; then
-        # Set DNS address translation in firewall:
-        for addr in \$vpn_dns; do
-            iptables -t nat -A PR-QBS -i vif+ -p udp --dport 53 -j DNAT --to \$addr
-            iptables -t nat -A PR-QBS -i vif+ -p tcp --dport 53 -j DNAT --to \$addr
-        done
-        su - -c 'notify-send "\$(hostname): LINK IS UP" --icon=network-idle' user
-    else
-        su - -c 'notify-send "\$(hostname): LINK UP, NO DNS" --icon=dialog-error' user
-    fi
-
-;;
-down)
-    su - -c 'notify-send "\$(hostname): LINK IS DOWN" --icon=dialog-error' user
-
-    # Restart the VPN automatically
-    sleep 5s
-    sudo /rw/config/rc.local
-    ;;
-esac
-
-EOF
-)
-	qube_write_file \
-		$_vm \
-		"root" \
-		/rw/config/vpn/qubes-vpn-handler.sh \
-        "$_text"
-
-    _text=$(cat <<EOF
-#!/bin/bash
-#    Block forwarding of connections through upstream network device
-#    (in case the vpn tunnel breaks):
-iptables -I FORWARD -o eth0 -j DROP
-iptables -I FORWARD -i eth0 -j DROP
-ip6tables -I FORWARD -o eth0 -j DROP
-ip6tables -I FORWARD -i eth0 -j DROP
-
-#    Accept traffic to VPN
-iptables -P OUTPUT ACCEPT
-iptables -F OUTPUT
-
-#    Add the \`qvpn\` group to system, if it doesn't already exist
-if ! grep -q "^qvpn:" /etc/group ; then
-     groupadd -rf qvpn
-     sync
-fi
-sleep 2s
-
-#    Block non-VPN traffic to clearnet
-iptables -I OUTPUT -o eth0 -j DROP
-#    Allow traffic from the \`qvpn\` group to the uplink interface (eth0);
-#    Our VPN client will run with group \`qvpn\`.
-iptables -I OUTPUT -p all -o eth0 -m owner --gid-owner qvpn -j ACCEPT
-
-EOF
-)
-	qube_write_file \
-		$_vm \
-		"root" \
-		/rw/config/qubes-firewall-user-script \
-        "$_text"
-        
-    _text=$(cat <<EOF
-#!/bin/bash
-VPN_CLIENT='openvpn'
-VPN_OPTIONS='--cd /rw/config/vpn/ --config openvpn-client.ovpn --daemon'
-
-su - -c 'notify-send "\$(hostname): Starting \$VPN_CLIENT..." --icon=network-idle' user
-groupadd -rf qvpn ; sleep 2s
-sg qvpn -c "\$VPN_CLIENT \$VPN_OPTIONS"
-
-EOF
-)
-	qube_write_file \
-		$_vm \
-		"root" \
-		/rw/config/rc.local \
-        "$_text"
-
-    _commands=$(cat <<EOF
-		mv /tmp/vpn.ovpn /rw/config/vpn/openvpn-client.ovpn
-		sudo chmod +x /rw/config/vpn/qubes-vpn-handler.sh
-		sudo chmod +x /rw/config/qubes-firewall-user-script
-		sudo chmod +x /rw/config/rc.local
-EOF
-)
-    qube_run_commands \
+    qube_append_file \
         $_vm \
-        "root" \
-        "$_commands"
-
-
+        root \
+        "/rw/config/qubes-firewall-user-script" \
+        "nft add rule ip qubes custom-forward tcp flags syn / syn,rst tcp option maxseg size set rt mtu"
 }
+
 
 function build_vpn_disp () {
     declare _vm=$1
@@ -1188,16 +1087,14 @@ function build_vpn_disp () {
     qvm-prefs $_vm netvm ""
 
     config_user $_vm
-    config_template_firefox $_vm
 
     _text=$(cat <<EOF
 #!/bin/bash
 
 firefox \
-     "https://www.iplocation.net/" \
-     "https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/" \
-     "https://addons.mozilla.org/en-US/firefox/addon/privacy-badger17/" &
-nautilus &
+     "https://www.iplocation.com/" \
+     "https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/" &
+nemo &
 deluge &
 
 EOF
