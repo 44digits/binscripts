@@ -289,13 +289,21 @@ EOF
 
 
 function win10_start () {
+    # start windows vm
+    #   allow incoming traffice for RDP in firewall
+    #"iptables -I FORWARD 2 -s 10.137.0.0/24 -d 10.137.0.39 -j ACCEPT"
+
+    declare _WINIP=10.137.0.18
+    declare _WINVM=win10-arcgis
+
     qvm-run \
         $__qvm_run_options \
         -u root \
         sys-firewall \
-        "iptables -I FORWARD 2 -s 10.137.0.0/24 -d 10.137.0.39 -j ACCEPT"
-    qvm-start win10-esri
-    wait_qube_startup win10-esri
+        "nft add rule ip qubes custom-forward ip saddr 10.137.0.0/24 ip daddr $_WINIP ct state new,established,related counter accept"
+
+    qvm-start $_WINVM
+    wait_qube_startup $_WINVM
 }
 
 
