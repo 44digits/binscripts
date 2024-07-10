@@ -334,6 +334,7 @@ function qube_shutdown () {
     declare _runninglist=$(qvm-ls --raw-data --running --fields name \
         | grep -v sys-firewall \
         | grep -v sys-net \
+        | grep -v sys-usb \
         | grep -v dom0
         )
 
@@ -342,6 +343,7 @@ function qube_shutdown () {
         qvm-shutdown --wait $_vm
     done 3<<< "$_runninglist "
 
+    qvm-shutdown --wait sys-usb
     qvm-shutdown --wait sys-firewall
     qvm-shutdown --wait sys-net
 
