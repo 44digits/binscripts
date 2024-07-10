@@ -154,6 +154,30 @@ EOF
 
 
 
+function printer_connect () {
+    declare _vm="$1"
+
+    qvm-start \
+        --skip-if-running \
+        printer
+    qube_install_software "$_vm" "cups-client"
+
+    _commands=$(cat <<EOF
+        mkdir -p /etc/cups
+        echo ServerName  127.0.0.1:631 >> /etc/cups/client.conf
+
+EOF
+    )
+
+    qube_run_commands $_vm "root" "$_commands"
+    qvm-run \
+        $__qvm_run_options \
+        "$_vm" \
+        "qvm-connect-tcp 631:printer:631" &
+
+}
+
+
 function firefox_work () {
     declare _urls=$(tr -s [:space:] ' ' <<EOF
         http://workflowy.com/login/
@@ -525,6 +549,14 @@ function launcher_main () {
                 ;;
             win10start)
                 win10_start
+                ;;
+            printer-connect)
+                clear
+                declare _vm=$(get_vmname)
+
+                if [[ "$_vm" ]]; then 
+                    printer_connect $_vm
+                fi
                 ;;
             shutdown)
                 qube_shutdown
