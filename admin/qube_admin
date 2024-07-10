@@ -371,6 +371,22 @@ function config_imagemagick () {
 }
 
 
+function config_template_nemo () {
+    declare _vm=$1
+    declare _nemoconfigdir="/usr/share/nemo/actions"
+
+    qube_copy_file \
+        $_vm \
+        "root" \
+        "$_CONFIGDIR/nemo/copy_to_vm.nemo_action" \
+        "$_nemoconfigdir/copy_to_vm.nemo_action"
+    qube_copy_file \
+        $_vm \
+        "root" \
+        "$_CONFIGDIR/nemo/move_to_vm.nemo_action" \
+        "$_nemoconfigdir/move_to_vm.nemo_action"
+}
+
 
 function config_template_firefox () {
     declare _vm=$1
