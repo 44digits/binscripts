@@ -9,8 +9,8 @@
 #
 
 
-declare _MASTER_DEBIAN_TEMPLATE=debian-11
-declare _MASTER_FEDORA_TEMPLATE=fedora-34
+declare _MASTER_DEBIAN_TEMPLATE=debian-12-xfce
+declare _MASTER_FEDORA_TEMPLATE=fedora-38-xfce
 declare _CONFIGDIR="$(dirname $0)/config"
 declare _UTILITYDIR="$(dirname $0)/utilities"
 declare _SOFTWARE="$(dirname $0)/soft"
