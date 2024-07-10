@@ -83,8 +83,12 @@ declare __GPG=gpg
 declare __FIREWALL=sys-firewall
 declare __qvm_run_options="-vp --color-stderr=37"
 #declare __lockme=/tmp/launcher.lock
-declare __DISPWAIT=15
-declare __MIC=dom0:mic
+declare __DISPWAIT=20
+#declare __CAMERA="sys-usb:1-10.3"  #046d_HD_Webcam_C525_25AE2A60                          congy
+declare __CAMERA=$(qvm-usb \
+        | grep C525 \
+        | cut -d' ' -f1)
+
 
 function get_vmname () {
     declare _vms=$(qvm-ls --raw-list --running --exclude dom0 --all \
