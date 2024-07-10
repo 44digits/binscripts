@@ -97,14 +97,19 @@ xfconf-query \
     --set "Default"
 
 
+
 echo "== Background setup =="
 
+xfconf-query \
+    --channel xfce4-desktop \
+    --property /backdrop/single-workspace-mode \
+    --set false
 set_background "monitor$_MONITOR0" 0 6 "$_IMAGEDIRECTORY/waves3.jpg"
-set_background "monitor$_MONITOR0" 1 5 "$_IMAGEDIRECTORY/wallpapertip_blue-victorian-wallpaper_482450.jpg"
+set_background "monitor$_MONITOR0" 1 5 "$_IMAGEDIRECTORY/wallpapertip_blue-victorian-wallpaper.jpg"
 set_background "monitor$_MONITOR0" 2 3 "$_IMAGEDIRECTORY/green_jungle.jpg"
 set_background "monitor$_MONITOR0" 3 2 "$_IMAGEDIRECTORY/double-bubble-dark.png"
 set_background "monitor$_MONITOR1" 0 0 "$_IMAGEDIRECTORY/waves3.jpg"
-set_background "monitor$_MONITOR1" 1 5 "$_IMAGEDIRECTORY/wallpapertip_blue-victorian-wallpaper_482450.jpg"
+set_background "monitor$_MONITOR1" 1 5 "$_IMAGEDIRECTORY/wallpapertip_blue-victorian-wallpaper.jpg"
 set_background "monitor$_MONITOR1" 2 3 "$_IMAGEDIRECTORY/green_jungle.jpg"
 set_background "monitor$_MONITOR1" 3 2 "$_IMAGEDIRECTORY/double-bubble-dark.png"
 
