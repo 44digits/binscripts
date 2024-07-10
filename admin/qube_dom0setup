@@ -149,6 +149,26 @@ xfconf-query \
 
 xfce4-panel --restart
 
+# update usb devices
+#dom0:00_1f.6  Ethernet controller: Intel Corporation Ethernet Connection (14) I219-V
+declare ETHERNET_PCI="dom0:00_1f.6"
+
+#dom0:01_00.0  USB controller: Renesas Technology Corp. uPD720201 USB 3.0 Host Controller            
+declare USB2_PCI="dom0:01_00.0"
+
+
+echo "Updating ethernet on sys-net..."
+qvm-shutdown --wait sys-net
+sudo qvm-pci detach sys-net $ETHERNET_PCI
+sudo qvm-pci attach --persistent --option no-strict-reset=True sys-net $ETHERNET_PCI
+qvm-start sys-net
+
+
+echo "Updating USB cards on sys-usb..."
+qvm-shutdown --wait sys-usb
+sudo qvm-pci detach sys-usb $USB2_PCI
+qvm-start sys-usb
+
 echo
 echo "Done."
 
