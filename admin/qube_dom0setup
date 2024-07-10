@@ -4,8 +4,8 @@
 # https://docs.xfce.org/xfce/xfconf/xfconf-query
 
 
-declare _MONITOR0="DisplayPort-0"
-declare _MONITOR1="DisplayPort-1"
+declare _MONITOR0="HDMI-3"
+declare _MONITOR1="HDMI-1"
 declare _IMAGEDIRECTORY="/home/coconut/Pictures/background"
 
 
