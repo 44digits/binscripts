@@ -169,6 +169,12 @@ qvm-shutdown --wait sys-usb
 sudo qvm-pci detach sys-usb $USB2_PCI
 qvm-start sys-usb
 
+# split gpg
+#   https://www.qubes-os.org/doc/split-gpg/
+echo "Configuring Split GPG"
+sudo qubes-dom0-update qubes-gpg-split-dom0
+sudo echo "dev  gpg  allow" > /etc/qubes-rpc/policy/qubes.Gpg
+
 echo
 echo "Done."
 
