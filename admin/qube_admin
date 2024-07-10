@@ -359,6 +359,18 @@ function appvm_install_additions () {
 }
 
 
+function config_imagemagick () {
+    declare _vm=$1
+    notify 2 "--config_ImageMagick _appvm:$_vm"
+
+    qvm-run \
+        $__qvm_run_options \
+        -u root \
+        $_vm \
+		"sed -i \"/<\!--/b; s/^.*PDF.*$/<\!-- & -->/\" /etc/ImageMagick-6/policy.xml"
+}
+
+
 
 function config_template_firefox () {
     declare _vm=$1
