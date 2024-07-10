@@ -90,21 +90,15 @@ function main () {
     notify "Qube Restore starting..."
 
     for _vm in "$@"; do
-        # if [[ "congy88" = "$_tmpvm" ]]; then
-        #     _vm="congy5"
-        # else
-        #     _vm=${_tmpvm:0:-2}
-        # fi
-
         # _vm=${_tmpvm:0:-2}
 
         notify "-- $_vm: starting restore"
         
         _deviceid=$(attach_device $_vm $_backupdevice $_mountpoint)
 
+        # --delete
         _cmd=$(tr -s [:space:] ' ' <<EOF
             rsync
-                --delete
                 --ignore-errors
                 -av
                 --filter="- *[Cc]ache*"
