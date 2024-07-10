@@ -2,7 +2,10 @@
 ####################################################################
 # qube_arrange_windows
 #
-# arrange desktop
+# get list of windows:
+#   wmctrl -lx
+#   for p in $(xdotool search  --onlyvisible '.*'); do echo $p $(xdotool getwindowname $p) ; done
+# get window dimensions: xwininfo
 #
 # Date: 2020.12.24
 
@@ -104,21 +107,10 @@ if [[ ! -z $vpn_qube ]]; then
     win_id=$(get_windowid_wmctrl "$vpn_qube:deluge")
     set_window_geom $win_id 1680 180 1100 600 2 0
 
-    win_id=$(get_windowid_wmctrl "$vpn_qube:org.gnome.Nautilus")
+    win_id=$(get_windowid_wmctrl "$vpn_qube:nemo")
     set_window_geom $win_id 1894 30 900 600 2 0
 
     win_id=$(get_windowid_wmctrl "$vpn_qube:Navigator")
     set_window_geom $win_id 2420 30 1170 1020 2 0
 
 fi
-
-
-# get list of windows:
-#   wmctrl -lx
-#   for p in $(xdotool search  --onlyvisible '.*'); do echo $p $(xdotool getwindowname $p) ; done
-# get window dimensions: xwininfo
-
-
-
-
-
