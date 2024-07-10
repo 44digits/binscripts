@@ -516,6 +516,7 @@ function build_dev_template () {
     declare _vm=$1
 
     config_template_firefox $_vm
+    config_template_nemo $_vm
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
