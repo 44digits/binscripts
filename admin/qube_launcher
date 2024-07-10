@@ -198,6 +198,34 @@ function chrome_linkedin () {
 
 
 
+function launch_explorer () {
+    declare _vm=$1
+    declare _ostype=$( qube_get_distribution $_vm )
+
+    case $_ostype in
+        "debian")
+            qvm-run \
+                $__qvm_run_options \
+                "$_vm" \
+                "nemo" &
+            ;;
+
+        "fedora")
+            qvm-run \
+                $__qvm_run_options \
+                "$_vm" \
+                "thunar" &
+            ;;
+
+        *)
+            notify 0 "ERROR: qube_update: unknown OStype:$_ostype"
+            exit 1
+            ;;
+    esac
+}
+
+
+
 function get_vpn_qubename () {
     declare _vpnname=$(qvm-ls --fields NAME,TEMPLATE --running \
         | grep $__VPNDVM \
@@ -523,6 +551,14 @@ function launcher_main () {
                 wait_qube_startup $__MEDIA
                 ;;
                 
+            explorer)
+                clear
+                declare _vm=$(get_vmname)
+
+                if [[ "$_vm" ]]; then 
+                    launch_explorer $_vm
+                fi
+                ;;
             scan)
                 qvm-run \
                     $__qvm_run_options \
