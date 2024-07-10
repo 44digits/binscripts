@@ -55,10 +55,11 @@ set_window_geom () {
 }
 
 
+
 declare win_id
 
 # microsoft teams
-win_id=$(get_windowid_wmctrl "microsoft teams")
+win_id=$(get_windowid_wmctrl "congy:crx")
 set_window_geom $win_id 0 30 1200 650 0 1
 
 # scrappy browser
@@ -74,7 +75,7 @@ win_id=$(get_windowid_wmctrl "vlc")
 set_window_geom $win_id 1183 600 489 355 0 1
 
 # congy terminal
-win_id=$(get_windowid_wmctrl "congy:gnome-terminal")
+win_id=$(get_windowid_wmctrl "congy:xfce4-terminal")
 set_window_geom $win_id 938 30 734 459 1 0
 
 # congy slack
