@@ -1,0 +1,9 @@
+#!/bin/bash
+# printer config
+#   set up user to allow config of printer settings
+#   2024.01.23
+
+
+sudo passwd user
+sudo usermod -a -G lpadmin user
+firefox localhost:631 &
