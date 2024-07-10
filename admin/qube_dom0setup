@@ -125,7 +125,7 @@ xfconf-query \
 
 xfconf-query --channel xfce4-panel --property /panels/panel-2/length --create --type int --set 100
 xfconf-query --channel xfce4-panel --property /panels/panel-2/mode --create --type int --set 0
-xfconf-query --channel xfce4-panel --property /panels/panel-2/output-name --create --type string --set "DisplayPort-1"
+xfconf-query --channel xfce4-panel --property /panels/panel-2/output-name --create --type string --set "$_MONITOR1"
 xfconf-query --channel xfce4-panel --property /panels/panel-2/position --create --type string --set "p=6;x=1784;y=32"
 xfconf-query --channel xfce4-panel --property /panels/panel-2/position-locked --create --type bool --set true
 xfconf-query --channel xfce4-panel --property /panels/panel-2/size --create --type int --set 30
