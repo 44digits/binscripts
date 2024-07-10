@@ -7,7 +7,7 @@
 
 
 
-declare _backupdevice="dom0:md127"
+declare _backupdevice="sys-usb:md127"
 declare _mountpoint="/mnt/backup"
 declare _qubebackuplist
 declare __qvm_run_options="${__qvm_run_options:-"-p --color-stderr=37"}"
