@@ -600,23 +600,14 @@ function launcher_main () {
                 qube_shutdown
                 ;;
             startup)
-                qvm-run \
-                    $__qvm_run_options \
-                    $__CONGY \
-                    "gnome-terminal" &
-                sleep 3
-                qvm-run \
-                    $__qvm_run_options \
-                    $__CONGY \
-                    "teams" &
-                sleep 3
-                qvm-run \
-                    $__qvm_run_options \
-                    $__CONGY \
-                    "/home/user/startup" &
-                wait_qube_startup $__CONGY 
-                qvm-device mic attach $__CONGY $__MIC
-                sleep 3
+                #qvm-start --skip-if-running $__CONGY
+                #wait_qube_startup $__CONGY 
+                #qvm-usb attach $__CONGY $__CAMERA
+                #qvm-run \
+                #    $__qvm_run_options \
+                #    $__CONGY \
+                #    "/home/user/bin/startup" &
+                #sleep 3
 
                 thunderbird_local
                 sleep 3
