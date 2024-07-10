@@ -15,7 +15,6 @@ __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
     fedora-disp
     media-disp
     plus-disp
-    printer-disp
     ..............................
     congy
     dev
@@ -26,8 +25,6 @@ __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
     gpg
     media
     study
-    tex
-    transfer
     work
     zoom
     ..............................
@@ -51,16 +48,17 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
     calibre
     chromium
     classicFM
+    explorer
     firefox
     gedit
-    gnome-terminal
     gvim
     hostnames
     insperity
     kodi
-    nautilus
+    printer-connect
     thunder
     win10start
+    xfce4-terminal
     xterm
     ..............................
     scan
