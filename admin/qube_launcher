@@ -417,7 +417,7 @@ function launcher_main () {
     if [[ "$_app_selected" ]]; then
         case $_app_selected in
            '<pass>')
-                declare _loginfile="logins_2023"
+                declare _loginfile="logins_2024"
                 declare _passstring
                 read -ep $'\nPassword: ' _passstring
 
