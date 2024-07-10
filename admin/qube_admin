@@ -94,6 +94,7 @@ function create_all_templates () {
         if create_template $_templateconfig $_softwarelist; then
             template_install_additions $_vm
         fi
+	qvm-shutdown --wait $_vm
     done
 
 }
@@ -216,6 +217,7 @@ function create_all_appvms () {
             if create_appvm $_appvm ${VM_CONFIG[$_appvm]}; then
                 appvm_install_additions $_appvm
             fi
+            qvm-shutdown --wait $_appvm
         done
     else
         for _appvm in "${!VM_CONFIG[@]}"; do
@@ -227,6 +229,7 @@ function create_all_appvms () {
                 if create_appvm $_appvm ${VM_CONFIG[$_appvm]}; then
                     appvm_install_additions $_appvm
                 fi
+	        qvm-shutdown --wait $_appvm
             fi
         done
     fi
