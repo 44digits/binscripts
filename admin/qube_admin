@@ -739,16 +739,16 @@ function build_min_template () {
     declare _vm=$1
 
     # config for thunderbird dates
-    _commands=$(cat <<EOF
-        ln -s /usr/share/i18n/locales/en_DK /usr/share/i18n/locales/en_SE
-        echo 'en_SE.UTF-8 UTF-8' | tee -a /etc/locale.gen
-        locale-gen
-EOF
-)
-    qube_run_commands \
-        $_vm \
-        "root" \
-        "$_commands"
+#    _commands=$(cat <<EOF
+#        ln -s /usr/share/i18n/locales/en_DK /usr/share/i18n/locales/en_SE
+#        echo 'en_SE.UTF-8 UTF-8' | tee -a /etc/locale.gen
+#        locale-gen
+#EOF
+#)
+#    qube_run_commands \
+#        $_vm \
+#        "root" \
+#        "$_commands"
 
     qube_remove_incomming $_vm
     qvm-shutdown --wait $_vm
@@ -757,15 +757,15 @@ EOF
 function build_email_appvm () {
     declare _vm=$1
 
-    for _f in \
-        thunderbird_timefix ;
-    do
-        qube_copy_file \
-            $_vm \
-            "root" \
-            "$_CONFIGDIR/email/$_f" \
-            "/usr/local/bin/$_f"
-    done
+#    for _f in \
+#        thunderbird_timefix ;
+#    do
+#        qube_copy_file \
+#            $_vm \
+#            "root" \
+#            "$_CONFIGDIR/email/$_f" \
+#            "/usr/local/bin/$_f"
+#    done
 
     build_min_appvm $_vm
 
