@@ -396,30 +396,47 @@ function config_template_firefox () {
     notify 2 "--config_firefox _appvm:$_vm"
 
     _ostype=$( qube_get_distribution $_vm )
+
     case $_ostype in
         "debian")
             _firefoxdir="/etc/firefox-esr"
+            qube_copy_file \
+                $_vm \
+                "root" \
+                "$_CONFIGDIR/firefox/debian-syspref.js" \
+                "$_firefoxdir/syspref.js"
             ;;
 
         "fedora")
-            _firefoxdir="/etc/firefox/pref"
+            _firefoxdir="/etc/firefox"
+            _firefoxconfigdir="/usr/lib64/firefox/browser/defaults/preferences"
+            qube_copy_file \
+                $_vm \
+                "root" \
+                "$_CONFIGDIR/firefox/fedora-syspref.js" \
+                "$_firefoxconfigdir/syspref.js"
+            echo "-- copy config"
+
+            qvm-run \
+                $__qvm_run_options \
+                -u root \
+                "$_vm" \
+                "mv $_firefoxconfigdir/firefox-redhat-default-prefs.js $_firefoxconfigdir/firefox-redhat-default-prefs.js.old"
+            echo "-- move old prefs"
             ;;
+
         *)
             notify 0 "ERROR: qube_update: unknown OStype:$_ostype"
             exit 1
+            ;;
     esac
 
-    for _f in \
-        syspref.js \
-        bookmarks.html ;
-    do
-        qube_copy_file \
-            $_vm \
-            "root" \
-            "$_CONFIGDIR/firefox/$_f" \
-            "$_firefoxdir/$_f"
-    done
-
+    qube_copy_file \
+        $_vm \
+        "root" \
+        "$_CONFIGDIR/firefox/bookmarks.html" \
+        "$_firefoxdir/bookmarks.html"
+    echo "-- copy bookmarks"
 }
 
 
