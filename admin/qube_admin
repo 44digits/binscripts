@@ -336,8 +336,6 @@ function appvm_install_additions () {
         sys-vpn-ro)
             build_vpnro $_appvm
             ;;
-        usb)
-            ;;
         vpn-disp)
             build_vpn_disp $_appvm
             ;;
