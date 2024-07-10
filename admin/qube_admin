@@ -1390,11 +1390,13 @@ VM_SOFT=(
         chromium
         curl
         eog
+        evince
         exiftool
         ffmpeg
         gimp
         git
         gnucash
+        imagemagick
         inkscape
         jmtpfs
         lame
@@ -1403,8 +1405,10 @@ VM_SOFT=(
         libreoffice
         libreoffice-gtk3
         nautilus
+        nemo
         pdfarranger
         pdftk
+        pitivi
         python3-pip
         python3-venv
         remmina
@@ -1418,8 +1422,9 @@ VM_SOFT=(
         texlive-latex-recommended 
         texlive-xetex
         tmux
-        vim-gtk
+        vim-gtk3
         vlc
+        wget
         xournal
         xsane
 EOF
@@ -1431,6 +1436,7 @@ EOF
         kodi
         libavcodec-extra
         nautilus
+        nemo
         rsync
         vlc
 EOF
@@ -1443,6 +1449,7 @@ EOF
         gpg
         libdbd-sqlite3
         nautilus
+        nemo
         pdftk
         qubes-gpg-split
         rsync
@@ -1460,6 +1467,7 @@ EOF
         libffi-dev
         libssl-dev
         nautilus
+        nemo
         python3-dev
         python3-pip
         python3-venv
@@ -1467,7 +1475,8 @@ EOF
         screen
         sqlite3
         tmux
-        vim-gtk
+        vim-gtk3
+        wget
 EOF
     )
     [printer]=$(tr -s [:space:] '&' <<EOF
@@ -1475,9 +1484,11 @@ EOF
         evince
         exiftool
         gimp
+        imagemagick
         nautilus
         pdfarranger
         pdftk
+        wget
         xsane
 EOF
     )
@@ -1485,24 +1496,24 @@ EOF
         chromium
         deluge
         eog
-        nautilus
-        openvpn
+        nemo
 EOF
     )
     [congy]=$(tr -s [:space:] '&' <<EOF
         cheese
-        chromium
         cifs-utils
         eog
+        evince
         git
         nautilus
+        nemo
         npm
         openfortivpn
         pdftk
-        qubes-usb-proxy
         remmina
         rsync
-        vim-gtk
+        vim-gtk3
+        wget
 EOF
     )
 )
