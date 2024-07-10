@@ -7,7 +7,7 @@
 
 
 
-declare _backupdevice="dom0:md127"
+declare _backupdevice="sys-usb:md127"
 declare _mountpoint="/mnt/backup"
 declare _qubebackuplist
 declare __qvm_run_options="${__qvm_run_options:-"-p --color-stderr=37"}"
@@ -126,7 +126,9 @@ EOF
     notify "Stop raid array?"
     read _xx
     case $_xx in
-        [Yy]* ) sudo mdadm --stop --scan;;
+        [Yy]* ) 
+            qvm-run $__qvm_run_options -u root sys-usb mdadm --stop --scan
+            ;;
         * ) echo "";;
     esac
 
