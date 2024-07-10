@@ -425,7 +425,7 @@ function launcher_main () {
                     qvm-run \
                         $__qvm_run_options \
                         $__GPG \
-                        "gnome-terminal --geometry=115x10 -e 'bash -c \"grep -i $_passstring $_loginfile;bash\" '" &
+                        "xfce4-terminal --geometry=115x10 -e 'bash -c \"grep -i $_passstring $_loginfile;bash\" '" &
                     wait_qube_startup $__GPG
                 fi
                 ;;
@@ -489,7 +489,7 @@ function launcher_main () {
                 fi
                 ;;
 
-            firefox | gedit | gvim | nautilus | xterm | gnome-terminal)
+            firefox | gedit | gvim | xterm | xfce4-terminal)
                 clear
                 declare _vm=$(get_vmname)
 
@@ -531,11 +531,11 @@ function launcher_main () {
             insperity)
                 qvm_firefox $__DVM https://portal.insperity.com
 
-                declare _loginfile="logins_2023"
+                declare _loginfile="logins_2024"
                 qvm-run \
                     $__qvm_run_options \
                     $__GPG \
-                    "gnome-terminal --geometry=115x10 -e 'bash -c \"grep -i insperity $_loginfile;bash\" '"
+                    "xfce4-terminal --geometry=115x10 -e 'bash -c \"grep -i insperity $_loginfile;bash\" '"
                 wait_qube_startup $__GPG
                 ;;
 
