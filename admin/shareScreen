@@ -1,0 +1,6 @@
+#!/bin/bash
+# close blank window used by zoom's share screen
+#
+# 2024.06.05
+
+xdotool selectwindow windowunmap
