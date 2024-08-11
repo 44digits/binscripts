@@ -12,16 +12,22 @@ declare _mountpoint="/mnt/backup"
 declare _qubebackuplist
 declare __qvm_run_options="${__qvm_run_options:-"-p --color-stderr=37"}"
 declare __dialogheight=600
+declare _usbqube="sys-usb"
+
 
 #    epub
+#    email
+#    files
+#    fin
+#    gpg
+#    media
+#    study
+#    work
+#    prayers
+#    congy
+#    slack
 read -r -d '' _qubebackuplist <<EOF
-    email
-    files
-    fin
-    gpg
-    media
-    study
-    work
+    rlang2
 EOF
 set -e 
 
@@ -93,6 +99,16 @@ function detach_device () {
 
 
 
+function stop_array () {
+    qvm-run \
+        $__qvm_run_options \
+        --user root \
+        $_usbqube \
+        "mdadm --stop --scan"
+}
+
+
+
 function main () {
     declare _cmd
     declare _vm
@@ -122,6 +138,7 @@ function main () {
                 --filter="- anaconda*"
                 --filter="- .config/chromium/*"
                 --filter="- .config/google-chrome/*"
+                --filter="- *R/x86_64-pc-linux-gnu-library*"
                 /home/user/
                 /mnt/backup/bak/qubes/$_vm/
 EOF
@@ -136,7 +153,7 @@ EOF
     notify "Stop raid array?"
     read _xx
     case $_xx in
-        [Yy]* ) sudo mdadm --stop --scan;;
+        [Yy]* ) stop_array;;
         * ) echo "";;
     esac
 
