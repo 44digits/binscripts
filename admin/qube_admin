@@ -1488,6 +1488,7 @@ EOF
         nautilus
         pdfarranger
         pdftk
+        sane
         wget
         xsane
 EOF
