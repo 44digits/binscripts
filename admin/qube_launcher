@@ -16,7 +16,6 @@ __DVMS=$(cat <<EOF | tr '[[:space:]]' ' '
     media-disp
     plus-disp
     ..............................
-    congy
     dev
     email
     epub
@@ -53,7 +52,6 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
     gedit
     gvim
     hostnames
-    insperity
     kodi
     printer-connect
     thunder
@@ -61,10 +59,7 @@ __APPS=$(cat <<EOF | tr '[[:space:]]' ' '
     xfce4-terminal
     xterm
     ..............................
-    scan
     vpn
-    ping
-    studytime
     shutdown
     startup
 EOF
@@ -603,11 +598,12 @@ function launcher_main () {
                 #qvm-start --skip-if-running $__CONGY
                 #wait_qube_startup $__CONGY 
                 #qvm-usb attach $__CONGY $__CAMERA
-                #qvm-run \
-                #    $__qvm_run_options \
-                #    $__CONGY \
-                #    "/home/user/bin/startup" &
-                #sleep 3
+
+                qvm-run \
+                    $__qvm_run_options \
+                    slack \
+                    "/usr/bin/slack" &
+                sleep 3
 
                 thunderbird_local
                 sleep 3
